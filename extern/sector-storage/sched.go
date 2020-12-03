@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -55,6 +56,8 @@ type scheduler struct {
 	workersLk sync.RWMutex
 	workers   map[WorkerID]*workerHandle
 
+	execSectorWorker sectorGroup
+
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
 	workerChange   chan struct{} // worker added / changed/freed resources
@@ -73,6 +76,11 @@ type scheduler struct {
 	testSync chan struct{} // used for testing
 }
 
+type sectorGroup struct {
+	lk    sync.RWMutex
+	group map[abi.SectorID]string
+}
+
 type workerHandle struct {
 	workerRpc Worker
 
@@ -80,6 +88,7 @@ type workerHandle struct {
 
 	preparing *activeResources
 	active    *activeResources
+	reqTask   map[sealtasks.TaskType]uint
 
 	lk sync.Mutex
 
@@ -92,6 +101,7 @@ type workerHandle struct {
 	cleanupStarted bool
 	closedMgr      chan struct{}
 	closingMgr     chan struct{}
+	ctx            context.Context
 }
 
 type schedWindowRequest struct {
@@ -145,6 +155,10 @@ type workerResponse struct {
 func newScheduler() *scheduler {
 	return &scheduler{
 		workers: map[WorkerID]*workerHandle{},
+
+		execSectorWorker: sectorGroup{
+			group: map[abi.SectorID]string{},
+		},
 
 		schedule:       make(chan *workerRequest),
 		windowRequests: make(chan *schedWindowRequest, 20),
@@ -378,6 +392,10 @@ func (sh *scheduler) trySched() {
 			task := (*sh.schedQueue)[sqi]
 			needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
+			sh.execSectorWorker.lk.RLock()
+			sectorGroup, exist := sh.execSectorWorker.group[task.sector.ID]
+			sh.execSectorWorker.lk.RUnlock()
+
 			task.indexHeap = sqi
 			for wnd, windowRequest := range sh.openWindows {
 				worker, ok := sh.workers[windowRequest.worker]
@@ -390,6 +408,15 @@ func (sh *scheduler) trySched() {
 				if !worker.enabled {
 					log.Debugw("skipping disabled worker", "worker", windowRequest.worker)
 					continue
+				}
+				if task.taskType != sealtasks.TTFetch {
+					workerGroup := worker.workerRpc.GetWorkerGroup(task.ctx)
+					if exist && sectorGroup != "all" && workerGroup != "all" {
+						if workerGroup != sectorGroup {
+							log.Infof("sectorGroup does not match workerGroup, sectorid: %v, sectorGroup: %s, workerGroup: %s, taskType: %s \n", task.sector, sectorGroup, workerGroup, task.taskType)
+							continue
+						}
+					}
 				}
 
 				// TODO: allow bigger windows
@@ -423,6 +450,12 @@ func (sh *scheduler) trySched() {
 			sort.SliceStable(acceptableWindows[sqi], func(i, j int) bool {
 				wii := sh.openWindows[acceptableWindows[sqi][i]].worker // nolint:scopelint
 				wji := sh.openWindows[acceptableWindows[sqi][j]].worker // nolint:scopelint
+
+				fmt.Println(acceptableWindows[sqi])
+				fmt.Printf("acceptableWindows[sqi][i]: %d\n", acceptableWindows[sqi][i])
+				fmt.Printf("acceptableWindows[sqi][j]: %d\n", acceptableWindows[sqi][j])
+				fmt.Printf("wii: %s\n", wii.String())
+				fmt.Printf("wji: %s\n", wji.String())
 
 				if wii == wji {
 					// for the same worker prefer older windows
@@ -461,11 +494,26 @@ func (sh *scheduler) trySched() {
 		for _, wnd := range acceptableWindows[task.indexHeap] {
 			wid := sh.openWindows[wnd].worker
 			wr := sh.workers[wid].info.Resources
+			worker := sh.workers[wid]
+
+			ok, err := worker.workerRpc.AllowableRange(task.ctx, task.taskType)
+			if !ok || err != nil {
+				// worker.lk.Unlock()
+				// windows[wnd].lk.Unlock()
+				continue
+			}
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.ID.Number, wnd)
 
 			// TODO: allow bigger windows
 			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", wr) {
+				continue
+			}
+
+			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
+
+			err = worker.workerRpc.AddStore(task.ctx, task.sector.ID, task.taskType)
+			if err != nil {
 				continue
 			}
 
@@ -516,6 +564,7 @@ func (sh *scheduler) trySched() {
 		window := window // copy
 		select {
 		case sh.openWindows[wnd].done <- &window:
+			fmt.Printf("run task worker id: %s\n", sh.openWindows[wnd].worker.String())
 		default:
 			log.Error("expected sh.openWindows[wnd].done to be buffered")
 		}
@@ -568,4 +617,52 @@ func (sh *scheduler) Close(ctx context.Context) error {
 		return ctx.Err()
 	}
 	return nil
+}
+
+func (w *workerHandle) deleteTask(taskType sealtasks.TaskType) {
+	v, ok := w.reqTask[taskType]
+	if ok {
+		fmt.Print("remove ")
+		fmt.Println(taskType)
+		if v > 0 {
+			w.reqTask[taskType] -= 1
+		}
+	}
+	log.Warnf("may be err,type :%s is not exist", taskType)
+}
+
+func (w *workerHandle) AddTask(ctx context.Context) error {
+	tasks, err := w.workerRpc.TaskTypes(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting supported worker task types: %w", err)
+	}
+	w.lk.Lock()
+	for k, _ := range tasks {
+		if k != sealtasks.TTAddPiece && k != sealtasks.TTPreCommit1 && k != sealtasks.TTPreCommit2 &&
+			k != sealtasks.TTCommit1 && k != sealtasks.TTCommit2 {
+			fmt.Print("continue ")
+			fmt.Println(k)
+			continue
+		}
+		_, ok := w.reqTask[k]
+		if ok {
+			w.reqTask[k] += 1
+		} else {
+			w.reqTask[k] = 1
+		}
+		fmt.Print("add ")
+		fmt.Println(k)
+	}
+	w.lk.Unlock()
+	return nil
+}
+
+func (w *workerHandle) GetWorkerWait() int {
+	var c int = 0
+	w.lk.Lock()
+	for _, v := range w.reqTask {
+		c += int(v)
+	}
+	w.lk.Unlock()
+	return c
 }

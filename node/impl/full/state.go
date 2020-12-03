@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -143,6 +144,9 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 	info, err := mas.Info()
 	if err != nil {
 		return miner.MinerInfo{}, err
+	}
+	if m.StateManager.GetNtwkVersion(ctx, ts.Height()) >= network.Version8 && info.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+		info.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
 	}
 	return info, nil
 }
@@ -401,6 +405,24 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 		ts, err = a.Chain.LoadTipSet(tsk)
 		if err != nil {
 			return nil, xerrors.Errorf("loading specified tipset %s: %w", tsk, err)
+		}
+	}
+
+	if tsk == types.EmptyTSK {
+		var r *api.MsgLookup
+		r, err = a.StateWaitMsg(ctx, mc, build.MessageConfidence)
+		if err != nil {
+			return nil, xerrors.Errorf("finding message in chain: %w", err)
+		}
+
+		childTs, err := a.Chain.LoadTipSet(r.TipSet)
+		if err != nil {
+			return nil, xerrors.Errorf("finding message in chain: %w", err)
+		}
+
+		ts, err = a.Chain.LoadTipSet(childTs.Parents())
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -1068,7 +1090,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 		return types.EmptyInt, xerrors.Errorf("loading reward actor state: %w", err)
 	}
 
-	deposit, err := rewardState.PreCommitDepositForPower(powerSmoothed, sectorWeight)
+	deposit, err := rewardState.PreCommitDepositForPower(powerSmoothed, sectorWeight, ts.Height())
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("calculating precommit deposit: %w", err)
 	}
@@ -1145,6 +1167,7 @@ func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr 
 		pledgeCollateral,
 		&powerSmoothed,
 		circSupply.FilCirculating,
+		ts.Height(),
 	)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("calculating initial pledge: %w", err)

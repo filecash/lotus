@@ -275,7 +275,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := miner0.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
+				pcd := miner0.PreCommitDepositForPower(epochReward.ThisEpochRewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight, abi.ChainEpoch(0))
 
 				pledge := miner0.InitialPledgeForPower(
 					sectorWeight,
@@ -284,6 +284,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 					epochReward.ThisEpochRewardSmoothed,
 					tpow.QualityAdjPowerSmoothed,
 					circSupply(ctx, vm, minerInfos[i].maddr),
+					abi.ChainEpoch(0),
 				)
 
 				pledge = big.Add(pcd, pledge)

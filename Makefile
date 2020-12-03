@@ -27,7 +27,7 @@ GOFLAGS+=-ldflags="$(ldflags)"
 
 ## FFI
 
-FFI_PATH:=extern/filecoin-ffi/
+FFI_PATH:=../filecoin-ffi/
 FFI_DEPS:=.install-filcrypto
 FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 
@@ -224,6 +224,11 @@ lotus-keygen:
 	go build -o lotus-keygen ./cmd/lotus-keygen
 .PHONY: lotus-keygen
 BINS+=lotus-keygen
+lotus-checker:
+	rm -f sector-checker
+	go build -o sector-checker ./cmd/sector-checker
+.PHONY: sector-checker
+BINS+=sector-checker
 
 testground:
 	go build -tags testground -o /dev/null ./cmd/lotus

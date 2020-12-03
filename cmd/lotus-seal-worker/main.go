@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,6 +57,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		autoTaskCmd,
 		infoCmd,
 		storageCmd,
 		setCmd,
@@ -97,6 +100,104 @@ func main() {
 		log.Warnf("%+v", err)
 		return
 	}
+}
+
+var autoTaskCmd = &cli.Command{
+	Name:  "autotask",
+	Usage: "Start auto task worker",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "count",
+			Usage: "auto task run count",
+			Value: 1,
+		},
+		&cli.Int64Flag{
+			Name:  "delay",
+			Usage: "auto task delay",
+			Value: 10,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		log.Info("Starting auto task worker")
+
+		api, closer, err := lcli.GetWorkerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		mapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		ver, err := api.Version(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting version: %w", err)
+		}
+
+		fmt.Println("Worker version: ", ver)
+		fmt.Print("CLI version: ")
+		cli.VersionPrinter(cctx)
+		fmt.Println()
+
+		count := cctx.Int("count")
+		delay := cctx.Int("delay")
+		sigs := make(chan os.Signal, 1)
+
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			<-sigs
+			os.Exit(0)
+		}()
+
+		for {
+			taskCount := api.GetTaskCount(ctx)
+			wid := api.GetID(ctx)
+			waitTask := mapi.GetWorkerWait(ctx, wid)
+			fmt.Printf("Task Count: %d\n", taskCount)
+			fmt.Printf("wid: %s\n", wid.String())
+			fmt.Printf("Task Wait: %d\n", waitTask)
+			fmt.Println()
+			if taskCount+int32(waitTask) == 0 {
+				for i := 0; i < count; i++ {
+					err = mapi.PledgeSectorToWorker(ctx, wid)
+					if err != nil {
+						return xerrors.Errorf("pledge sector to worker: %w", err)
+					}
+				}
+			}
+			list, err := mapi.SectorsList(ctx)
+			if err != nil {
+				return err
+			}
+			isProving := true
+			for _, s := range list {
+				st, err := mapi.SectorsStatus(ctx, s, true)
+				if err != nil {
+					return err
+				}
+				if st.State != "Proving" {
+					isProving = false
+				}
+			}
+			if isProving {
+				for i := 0; i < count; i++ {
+					err = mapi.PledgeSector(ctx)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			time.Sleep(time.Duration(delay) * time.Second)
+		}
+
+		return nil
+	},
 }
 
 var runCmd = &cli.Command{
@@ -155,6 +256,31 @@ var runCmd = &cli.Command{
 			Name:  "timeout",
 			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value: "30m",
+		},
+		&cli.Int64Flag{
+			Name:  "addpiecemax",
+			Usage: "Allow the maximum number of simultaneous tasks for addpiece, default value: 0",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "precommit1max",
+			Usage: "Allow the maximum number of simultaneous tasks for precommit1, default value: 0",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "precommit2max",
+			Usage: "Allow the maximum number of simultaneous tasks for precommit2, default value: 0",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "commitmax",
+			Usage: "Allow the maximum number of simultaneous tasks for commit2, default value: 0",
+			Value: 0,
+		},
+		&cli.StringFlag{
+			Name:  "group",
+			Usage: "Worker grouping function, default value: all",
+			Value: "all",
 		},
 	},
 	Before: func(cctx *cli.Context) error {
@@ -381,7 +507,13 @@ var runCmd = &cli.Command{
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				TaskTypes: taskTypes,
-				NoSwap:    cctx.Bool("no-swap"),
+				AddPieceMax:   cctx.Int64("addpiecemax"),
+				PreCommit1Max: cctx.Int64("precommit1max"),
+				PreCommit2Max: cctx.Int64("precommit2max"),
+				CommitMax:     cctx.Int64("commitmax"),
+				Group:         cctx.String("group"),
+
+				NoSwap: cctx.Bool("no-swap"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
 			localStore: localStore,
 			ls:         lr,

@@ -134,15 +134,15 @@ var FullNodeWithSDRAt = func(calico, persian abi.ChainEpoch) FullNodeOpts {
 	return FullNodeOpts{
 		Opts: func(nodes []TestNode) node.Option {
 			return node.Override(new(stmgr.UpgradeSchedule), stmgr.UpgradeSchedule{{
-				Network:   network.Version6,
+				Network:   network.Version7,
 				Height:    1,
 				Migration: stmgr.UpgradeActorsV2,
 			}, {
-				Network:   network.Version7,
+				Network:   network.Version8,
 				Height:    calico,
 				Migration: stmgr.UpgradeCalico,
 			}, {
-				Network: network.Version8,
+				Network: network.Version9,
 				Height:  persian,
 			}})
 		},

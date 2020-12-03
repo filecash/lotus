@@ -552,6 +552,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	cfg.Dealmaking.Filter = "false"
 	return Options(
 		ConfigCommon(&cfg.Common),
 

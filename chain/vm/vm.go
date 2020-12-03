@@ -146,7 +146,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 
 	if parent != nil {
 		// TODO: The version check here should be unnecessary, but we can wait to take it out
-		if !parent.allowInternal && rt.NetworkVersion() >= network.Version7 {
+		if !parent.allowInternal && rt.NetworkVersion() >= network.Version8 {
 			rt.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
 		}
 		rt.gasUsed = parent.gasUsed
@@ -156,7 +156,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		rt.depth = parent.depth + 1
 	}
 
-	if rt.depth > MaxCallDepth && rt.NetworkVersion() >= network.Version6 {
+	if rt.depth > MaxCallDepth && rt.NetworkVersion() >= network.Version7 {
 		rt.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
 
@@ -172,7 +172,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 	}
 	vmm.From = resF
 
-	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version4 {
 		rt.Message = &vmm
 	} else {
 		resT, _ := rt.ResolveAddress(msg.To)
@@ -310,7 +310,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version4 {
 					// Leave the rt.Message as is
 				} else {
 					nmsg := Message{
@@ -398,6 +398,7 @@ func (vm *VM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (*Ap
 			ExitCode: aerrors.RetCode(actorErr),
 			Return:   ret,
 			GasUsed:  0,
+			Refund:   types.NewInt(0),
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,
@@ -436,6 +437,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrOutOfGas,
 				GasUsed:  0,
+				Refund:   types.NewInt(0),
 			},
 			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
@@ -455,6 +457,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 				MessageReceipt: types.MessageReceipt{
 					ExitCode: exitcode.SysErrSenderInvalid,
 					GasUsed:  0,
+					Refund:   types.NewInt(0),
 				},
 				ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "actor not found: %s", msg.From),
 				GasCosts: &gasOutputs,
@@ -472,6 +475,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderInvalid,
 				GasUsed:  0,
+				Refund:   types.NewInt(0),
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderInvalid, "send from not account actor: %s", fromActor.Code),
 			GasCosts: &gasOutputs,
@@ -486,6 +490,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
+				Refund:   types.NewInt(0),
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor nonce invalid: msg:%d != state:%d", msg.Nonce, fromActor.Nonce),
@@ -503,6 +508,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			MessageReceipt: types.MessageReceipt{
 				ExitCode: exitcode.SysErrSenderStateInvalid,
 				GasUsed:  0,
+				Refund:   types.NewInt(0),
 			},
 			ActorErr: aerrors.Newf(exitcode.SysErrSenderStateInvalid,
 				"actor balance less than needed: %s < %s", types.FIL(fromActor.Balance), types.FIL(gascost)),
@@ -603,6 +609,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			ExitCode: errcode,
 			Return:   ret,
 			GasUsed:  gasUsed,
+			Refund:   gasOutputs.Refund,
 		},
 		ActorErr:       actorErr,
 		ExecutionTrace: rt.executionTrace,

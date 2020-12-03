@@ -987,15 +987,6 @@ func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
-	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
-	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
-	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
-
-	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
-	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
-
 	// 2 years
 	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
 	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
@@ -1027,26 +1018,17 @@ func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
 
-	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
-	totalsByEpoch[sixMonths] = big.NewInt(49_929_341)
-	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
-
-	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
-	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
-
 	// 2 years
 	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
+	totalsByEpoch[twoYears] = big.NewInt(200_000_000)
 
 	// 3 years
 	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
+	totalsByEpoch[threeYears] = big.NewInt(50_000_000)
 
 	// 6 years
 	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
+	totalsByEpoch[sixYears] = big.NewInt(50_000_000)
 	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
 
 	sm.postIgnitionVesting = make([]msig0.State, 0, len(totalsByEpoch))
@@ -1069,43 +1051,32 @@ func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
 func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 
 	totalsByEpoch := make(map[abi.ChainEpoch]abi.TokenAmount)
+	totalsStartEpoch := make(map[abi.ChainEpoch]abi.ChainEpoch)
 
-	// 0 days
-	zeroDays := abi.ChainEpoch(0)
-	totalsByEpoch[zeroDays] = big.NewInt(10_632_000)
+	threeDays := abi.ChainEpoch(3 * builtin.EpochsInDay)
+	totalsByEpoch[threeDays] = big.Mul(big.NewInt(83_333_332), big.NewInt(int64(build.FilecoinPrecision/10)))
+	totalsStartEpoch[threeDays] = abi.ChainEpoch(54720)
 
-	// 6 months
-	sixMonths := abi.ChainEpoch(183 * builtin.EpochsInDay)
-	totalsByEpoch[sixMonths] = big.NewInt(19_015_887)
-	totalsByEpoch[sixMonths] = big.Add(totalsByEpoch[sixMonths], big.NewInt(32_787_700))
-
-	// 1 year
-	oneYear := abi.ChainEpoch(365 * builtin.EpochsInDay)
-	totalsByEpoch[oneYear] = big.NewInt(22_421_712)
-	totalsByEpoch[oneYear] = big.Add(totalsByEpoch[oneYear], big.NewInt(9_400_000))
-
-	// 2 years
 	twoYears := abi.ChainEpoch(2 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[twoYears] = big.NewInt(7_223_364)
+	totalsByEpoch[twoYears] = big.Mul(big.NewInt(1_916_666_666), big.NewInt(int64(build.FilecoinPrecision/10)))
+	totalsStartEpoch[twoYears] = abi.ChainEpoch(135360)
 
-	// 3 years
 	threeYears := abi.ChainEpoch(3 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[threeYears] = big.NewInt(87_637_883)
-	totalsByEpoch[threeYears] = big.Add(totalsByEpoch[threeYears], big.NewInt(898_958))
+	totalsByEpoch[threeYears] = big.Mul(big.NewInt(50_000_000), big.NewInt(int64(build.FilecoinPrecision)))
+	totalsStartEpoch[threeYears] = abi.ChainEpoch(54720)
 
-	// 6 years
 	sixYears := abi.ChainEpoch(6 * 365 * builtin.EpochsInDay)
-	totalsByEpoch[sixYears] = big.NewInt(100_000_000)
-	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(300_000_000))
-	totalsByEpoch[sixYears] = big.Add(totalsByEpoch[sixYears], big.NewInt(9_805_053))
+	totalsByEpoch[sixYears] = big.Mul(big.NewInt(50_000_000), big.NewInt(int64(build.FilecoinPrecision)))
+	totalsStartEpoch[sixYears] = abi.ChainEpoch(54720)
 
 	sm.postCalicoVesting = make([]msig0.State, 0, len(totalsByEpoch))
 	for k, v := range totalsByEpoch {
 		ns := msig0.State{
-			InitialBalance: big.Mul(v, big.NewInt(int64(build.FilecoinPrecision))),
+			InitialBalance: v,
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
-			StartEpoch:     build.UpgradeLiftoffHeight,
+			// In the ancestor logic, the start epoch was 0. This changes in the fork logic of the creeper upgrade itself.
+			StartEpoch: totalsStartEpoch[k],
 		}
 		sm.postCalicoVesting = append(sm.postCalicoVesting, ns)
 	}
@@ -1118,16 +1089,9 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	vf := big.Zero()
-	if height <= build.UpgradeIgnitionHeight {
+	if height <= build.UpgradeCreeperHeight {
 		for _, v := range sm.preIgnitionVesting {
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
-			vf = big.Add(vf, au)
-		}
-	} else if height <= build.UpgradeCalicoHeight {
-		for _, v := range sm.postIgnitionVesting {
-			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
-			// The start epoch changed in the Ignition upgrade.
-			au := big.Sub(v.InitialBalance, v.AmountLocked(height-v.StartEpoch))
 			vf = big.Add(vf, au)
 		}
 	} else {

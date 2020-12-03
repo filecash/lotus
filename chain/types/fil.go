@@ -12,7 +12,7 @@ import (
 type FIL BigInt
 
 func (f FIL) String() string {
-	return f.Unitless() + " FIL"
+	return f.Unitless() + " FIC"
 }
 
 func (f FIL) Unitless() string {
@@ -40,10 +40,10 @@ func (f FIL) Short() string {
 
 	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(dn)))
 	if r.Sign() == 0 {
-		return "0"
+		return "0 FIC"
 	}
 
-	return strings.TrimRight(strings.TrimRight(r.FloatString(3), "0"), ".") + " " + prefix + "FIL"
+	return strings.TrimRight(strings.TrimRight(r.FloatString(3), "0"), ".") + " " + prefix + "FIC"
 }
 
 func (f FIL) Format(s fmt.State, ch rune) {
@@ -76,8 +76,10 @@ func ParseFIL(s string) (FIL, error) {
 	if suffix != "" {
 		norm := strings.ToLower(strings.TrimSpace(suffix))
 		switch norm {
-		case "", "fil":
-		case "attofil", "afil":
+		case "", "fic":
+		case "attofil", "afic":
+			attofil = true
+		case "attofic", "afil":
 			attofil = true
 		default:
 			return FIL{}, fmt.Errorf("unrecognized suffix: %q", suffix)
@@ -102,7 +104,7 @@ func ParseFIL(s string) (FIL, error) {
 		if attofil {
 			pref = "atto"
 		}
-		return FIL{}, fmt.Errorf("invalid %sFIL value: %q", pref, s)
+		return FIL{}, fmt.Errorf("invalid %sFIC value: %q", pref, s)
 	}
 
 	return FIL{r.Num()}, nil

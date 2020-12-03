@@ -28,6 +28,18 @@ var order = map[TaskType]int{
 	TTFinalize:     -2, // most priority
 }
 
+var TaskMean = map[TaskType]string{
+	TTAddPiece:     "AddPiece",
+	TTPreCommit1:   "PreCommit1",
+	TTPreCommit2:   "PreCommit2",
+	TTCommit1:      "Commit1",
+	TTCommit2:      "Commit2",
+	TTFetch:        "Fetch",
+	TTFinalize:     "Finalize",
+	TTUnseal:       "Unseal",
+	TTReadUnsealed: "Unsealed",
+}
+
 var shortNames = map[TaskType]string{
 	TTAddPiece: "AP",
 

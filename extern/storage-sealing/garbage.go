@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
+	"github.com/google/uuid"
 )
 
 func (m *Sealing) pledgeSector(ctx context.Context, sectorID storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, sizes ...abi.UnpaddedPieceSize) ([]abi.PieceInfo, error) {
@@ -91,5 +92,15 @@ func (m *Sealing) PledgeSector() error {
 			return
 		}
 	}()
+	return nil
+}
+
+func (m *Sealing) PledgeSectorToWorker(ID uuid.UUID) error {
+	ctx := context.TODO()
+	err := m.sealer.AddWorkerTask(ctx, ID)
+	if err != nil {
+		return err
+	}
+	m.PledgeSector()
 	return nil
 }

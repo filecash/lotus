@@ -17,9 +17,9 @@ const (
 // Converts a network version into an actors adt version.
 func VersionForNetwork(version network.Version) Version {
 	switch version {
-	case network.Version0, network.Version1, network.Version2, network.Version3:
+	case network.Version0, network.Version1, network.Version2, network.Version3, network.Version4:
 		return Version0
-	case network.Version4, network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
+	case network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
 		return Version2
 	case network.Version10:
 		return Version3

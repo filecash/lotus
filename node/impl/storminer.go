@@ -101,6 +101,14 @@ func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uuid.UUID][]stor
 	return sm.StorageMgr.WorkerJobs(), nil
 }
 
+func (sm *StorageMinerAPI) GetWorker(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error) {
+	return sm.StorageMgr.GetWorker(ctx), nil
+}
+
+func (sm *StorageMinerAPI) SetWorkerParam(ctx context.Context, worker string, key string, value string) error {
+	return sm.StorageMgr.SetWorkerParam(ctx, worker, key, value)
+}
+
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
 	return sm.Miner.Address(), nil
 }
@@ -123,6 +131,10 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 
 func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
 	return sm.Miner.PledgeSector()
+}
+
+func (sm *StorageMinerAPI) PledgeSectorToWorker(ctx context.Context, ID uuid.UUID) error {
+	return sm.Miner.PledgeSectorToWorker(ID)
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
@@ -662,6 +674,12 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 
 func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
 	return sm.AddrSel.AddressConfig, nil
+func (sm *StorageMinerAPI) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return sm.StorageMgr.AddWorkerTask(ctx, ID)
+}
+
+func (sm *StorageMinerAPI) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return sm.StorageMgr.GetWorkerWait(ctx, ID)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

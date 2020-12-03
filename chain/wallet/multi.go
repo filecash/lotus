@@ -125,7 +125,7 @@ func (m MultiWallet) WalletSign(ctx context.Context, signer address.Address, toS
 	return w.WalletSign(ctx, signer, toSign, meta)
 }
 
-func (m MultiWallet) WalletExport(ctx context.Context, address address.Address) (*types.KeyInfo, error) {
+func (m MultiWallet) WalletExport(ctx context.Context, address address.Address, password string) (*types.KeyInfo, error) {
 	w, err := m.find(ctx, address, m.Remote, m.Local)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (m MultiWallet) WalletExport(ctx context.Context, address address.Address) 
 		return nil, xerrors.Errorf("key not found")
 	}
 
-	return w.WalletExport(ctx, address)
+	return w.WalletExport(ctx, address, password)
 }
 
 func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (address.Address, error) {
@@ -151,7 +151,7 @@ func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (add
 	return w.WalletImport(ctx, info)
 }
 
-func (m MultiWallet) WalletDelete(ctx context.Context, address address.Address) error {
+func (m MultiWallet) WalletDelete(ctx context.Context, address address.Address, pass string) error {
 	for {
 		w, err := m.find(ctx, address, m.Remote, m.Ledger, m.Local)
 		if err != nil {
@@ -161,10 +161,40 @@ func (m MultiWallet) WalletDelete(ctx context.Context, address address.Address) 
 			return nil
 		}
 
-		if err := w.WalletDelete(ctx, address); err != nil {
+		if err := w.WalletDelete(ctx, address, pass); err != nil {
 			return err
 		}
 	}
+}
+
+func (m MultiWallet) WalletChangePasswd(ctx context.Context, newPasswd string) (bool, error) {
+	return m.Local.WalletChangePasswd(ctx, newPasswd)
+}
+
+func (m MultiWallet) DeleteKey2(addr address.Address) error {
+	return m.Local.DeleteKey2(addr)
+}
+
+func (m MultiWallet) WalletClearPasswd(ctx context.Context) (bool, error) {
+	return m.Local.WalletClearPasswd(ctx)
+}
+
+// WalletIsLock
+func (m MultiWallet) WalletIsLock(ctx context.Context) (bool, error) {
+	return m.Local.WalletIsLock(ctx)
+}
+
+func (m MultiWallet) WalletLock(ctx context.Context) error {
+	return m.Local.WalletLock(ctx)
+}
+
+// // WalletUnlock
+func (m MultiWallet) WalletUnlock(ctx context.Context, password string) error {
+	return m.Local.WalletUnlock(ctx, password)
+}
+
+func (m MultiWallet) WalletSignMessage2(ctx context.Context, k address.Address, msg *types.Message, passwd string) (*types.SignedMessage, error) {
+	return m.Local.WalletSignMessage2(ctx, k, msg, passwd)
 }
 
 var _ api.WalletAPI = MultiWallet{}

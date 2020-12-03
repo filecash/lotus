@@ -2,8 +2,13 @@ package apistruct
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-multistore"
 	"io"
 	"time"
+
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -12,14 +17,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -131,10 +133,11 @@ type FullNodeStruct struct {
 		MpoolPush          func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 		MpoolPushUntrusted func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 
-		MpoolPushMessage func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
-		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
-		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                                     `perm:"read"`
-
+		MpoolPushMessage        func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)                   `perm:"sign"`
+		MpoolPushMessage2       func(context.Context, *types.Message, *api.MessageSendSpec, string) (*types.SignedMessage, error)           `perm:"sign"`
+		MpoolGetNonce           func(context.Context, address.Address) (uint64, error)                                                      `perm:"read"`
+		MpoolSub                func(context.Context) (<-chan api.MpoolUpdate, error)                                                       `perm:"read"`
+		MpoolListLocal          func(context.Context) ([]*types.SignedMessage, error)                                                       `perm:"read"`
 		MpoolBatchPush          func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
 		MpoolBatchPushUntrusted func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
 		MpoolBatchPushMessage   func(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) `perm:"sign"`
@@ -142,19 +145,25 @@ type FullNodeStruct struct {
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
 
-		WalletNew             func(context.Context, types.KeyType) (address.Address, error)                        `perm:"write"`
-		WalletHas             func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
-		WalletList            func(context.Context) ([]address.Address, error)                                     `perm:"write"`
-		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
-		WalletSign            func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
-		WalletSignMessage     func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
-		WalletVerify          func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)      `perm:"read"`
-		WalletDefaultAddress  func(context.Context) (address.Address, error)                                       `perm:"write"`
-		WalletSetDefault      func(context.Context, address.Address) error                                         `perm:"admin"`
-		WalletExport          func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
-		WalletImport          func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
-		WalletDelete          func(context.Context, address.Address) error                                         `perm:"write"`
-		WalletValidateAddress func(context.Context, string) (address.Address, error)                               `perm:"read"`
+		WalletNew             func(context.Context, types.KeyType) (address.Address, error)                                `perm:"write"`
+		WalletHas             func(context.Context, address.Address) (bool, error)                                         `perm:"write"`
+		WalletList            func(context.Context) ([]address.Address, error)                                             `perm:"write"`
+		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                                 `perm:"read"`
+		WalletSign            func(context.Context, address.Address, []byte) (*crypto.Signature, error)                    `perm:"sign"`
+		WalletSignMessage     func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)         `perm:"sign"`
+		WalletSignMessage2    func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"sign"`
+		WalletVerify          func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)              `perm:"read"`
+		WalletDefaultAddress  func(context.Context) (address.Address, error)                                               `perm:"write"`
+		WalletSetDefault      func(context.Context, address.Address) error                                                 `perm:"admin"`
+		WalletExport          func(context.Context, address.Address, string) (*types.KeyInfo, error)                       `perm:"admin"`
+		WalletImport          func(context.Context, *types.KeyInfo) (address.Address, error)                               `perm:"admin"`
+		WalletDelete          func(context.Context, address.Address, string) error                                         `perm:"write"`
+		WalletValidateAddress func(context.Context, string) (address.Address, error)                                       `perm:"read"`
+		WalletLock            func(context.Context) error                                                                  `perm:"admin"`
+		WalletUnlock          func(context.Context, string) error                                                          `perm:"admin"`
+		WalletIsLock          func(context.Context) (bool, error)                                                          `perm:"admin"`
+		WalletChangePasswd    func(context.Context, string) (bool, error)                                                  `perm:"admin"`
+		WalletClearPasswd     func(context.Context) (bool, error)                                                          `perm:"admin"`
 
 		ClientImport                              func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                                `perm:"admin"`
 		ClientListImports                         func(ctx context.Context) ([]api.Import, error)                                                                   `perm:"write"`
@@ -274,6 +283,9 @@ type FullNodeStruct struct {
 	}
 }
 
+func (c *FullNodeStruct) MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error) {
+	return c.Internal.MarketWithdraw(ctx, wallet, addr, amt)
+}
 func (c *FullNodeStruct) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
 	return c.Internal.StateMinerSectorCount(ctx, addr, tsk)
 }
@@ -304,7 +316,8 @@ type StorageMinerStruct struct {
 		MarketPendingDeals        func(ctx context.Context) (api.PendingDealInfo, error)                                                                                                                       `perm:"write"`
 		MarketPublishPendingDeals func(ctx context.Context) error                                                                                                                                              `perm:"admin"`
 
-		PledgeSector func(context.Context) error `perm:"write"`
+		PledgeSector         func(context.Context) error            `perm:"write"`
+		PledgeSectorToWorker func(context.Context, uuid.UUID) error `perm:"write"`
 
 		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
 		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
@@ -323,10 +336,6 @@ type StorageMinerStruct struct {
 		SectorTerminatePending        func(ctx context.Context) ([]abi.SectorID, error)                                             `perm:"admin"`
 		SectorMarkForUpgrade          func(ctx context.Context, id abi.SectorNumber) error                                          `perm:"admin"`
 
-		WorkerConnect func(context.Context, string) error                                `perm:"admin" retry:"true"` // TODO: worker perm
-		WorkerStats   func(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
-		WorkerJobs    func(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
-
 		ReturnAddPiece        func(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error          `perm:"admin" retry:"true"`
 		ReturnSealPreCommit1  func(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error `perm:"admin" retry:"true"`
 		ReturnSealPreCommit2  func(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error `perm:"admin" retry:"true"`
@@ -339,8 +348,7 @@ type StorageMinerStruct struct {
 		ReturnReadPiece       func(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error                   `perm:"admin" retry:"true"`
 		ReturnFetch           func(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                            `perm:"admin" retry:"true"`
 
-		SealingSchedDiag func(context.Context, bool) (interface{}, error)       `perm:"admin"`
-		SealingAbort     func(ctx context.Context, call storiface.CallID) error `perm:"admin"`
+		SealingAbort func(ctx context.Context, call storiface.CallID) error `perm:"admin"`
 
 		StorageList          func(context.Context) (map[stores.ID][]stores.Decl, error)                                                                                   `perm:"admin"`
 		StorageLocal         func(context.Context) (map[stores.ID]string, error)                                                                                          `perm:"admin"`
@@ -355,22 +363,26 @@ type StorageMinerStruct struct {
 		StorageLock          func(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                          `perm:"admin"`
 		StorageTryLock       func(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                  `perm:"admin"`
 
-		DealsImportData                        func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
-		DealsList                              func(ctx context.Context) ([]api.MarketDeal, error)               `perm:"read"`
-		DealsConsiderOnlineStorageDeals        func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOnlineStorageDeals     func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOnlineRetrievalDeals      func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOnlineRetrievalDeals   func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOfflineStorageDeals       func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOfflineStorageDeals    func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOfflineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOfflineRetrievalDeals  func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderVerifiedStorageDeals      func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderVerifiedStorageDeals   func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderUnverifiedStorageDeals    func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderUnverifiedStorageDeals func(context.Context, bool) error                                 `perm:"admin"`
-		DealsPieceCidBlocklist                 func(context.Context) ([]cid.Cid, error)                          `perm:"read"`
-		DealsSetPieceCidBlocklist              func(context.Context, []cid.Cid) error                            `perm:"admin"`
+		WorkerConnect func(context.Context, string) error                                `perm:"admin"` // TODO: worker perm
+		WorkerStats   func(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
+		WorkerJobs    func(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
+
+		GetWorker      func(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error)   `perm:"admin"`
+		SetWorkerParam func(ctx context.Context, worker string, key string, value string) error `perm:"admin"`
+
+		SealingSchedDiag                      func(context.Context, bool) (interface{}, error)                  `perm:"admin"`
+		DealsImportData                       func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
+		DealsList                             func(ctx context.Context) ([]api.MarketDeal, error)               `perm:"read"`
+		DealsConsiderOnlineStorageDeals       func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOnlineStorageDeals    func(context.Context, bool) error                                 `perm:"admin"`
+		DealsConsiderOnlineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOnlineRetrievalDeals  func(context.Context, bool) error                                 `perm:"admin"`
+		DealsConsiderOfflineStorageDeals      func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOfflineStorageDeals   func(context.Context, bool) error                                 `perm:"admin"`
+		DealsConsiderOfflineRetrievalDeals    func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOfflineRetrievalDeals func(context.Context, bool) error                                 `perm:"admin"`
+		DealsPieceCidBlocklist                func(context.Context) ([]cid.Cid, error)                          `perm:"read"`
+		DealsSetPieceCidBlocklist             func(context.Context, []cid.Cid) error                            `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 
@@ -382,13 +394,14 @@ type StorageMinerStruct struct {
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 
 		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		AddWorkerTask func(ctx context.Context, ID uuid.UUID) error                                                                                           `perm:"read"`
+		GetWorkerWait func(ctx context.Context, ID uuid.UUID) int                                                                                             `perm:"admin"`
 	}
 }
 
 type WorkerStruct struct {
 	Internal struct {
 		// TODO: lower perms
-
 		Version func(context.Context) (build.Version, error) `perm:"admin"`
 
 		TaskTypes func(context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
@@ -420,6 +433,26 @@ type WorkerStruct struct {
 
 		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
+
+		AllowableRange  func(ctx context.Context, task sealtasks.TaskType) (bool, error)                   `perm:"admin"`
+		GetWorkerInfo   func(ctx context.Context) sectorstorage.WorkerInfo                                 `perm:"admin"`
+		AddStore        func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error      `perm:"admin"`
+		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error      `perm:"admin"`
+		SetWorkerParams func(ctx context.Context, key string, val string) error                            `perm:"admin"`
+		GetWorkerGroup  func(ctx context.Context) string                                                   `perm:"admin"`
+
+		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
+		WalletLock         func(context.Context) error                                                                  `perm:"admin"`
+		WalletUnlock       func(context.Context, string) error                                                          `perm:"admin"`
+		WalletIsLock       func(context.Context) (bool, error)                                                          `perm:"admin"`
+		WalletChangePasswd func(context.Context, string) (bool, error)                                                  `perm:"admin"`
+		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"admin"`
+		DeleteKey2         func(address.Address)                                                                        `perm:"admin"`
+		GetTaskCount       func(ctx context.Context) int32                                                              `perm:"admin"`
+		SetID              func(ctx context.Context, ID uuid.UUID) error                                                `perm:"admin"`
+		GetID              func(ctx context.Context) uuid.UUID                                                          `perm:"admin"`
+		AddWorkerTask      func(ctx context.Context, ID uuid.UUID) error                                                `perm:"read"`
+		GetWorkerWait      func(ctx context.Context, ID uuid.UUID) int                                                  `perm:"read"`
 	}
 }
 
@@ -460,13 +493,22 @@ type GatewayStruct struct {
 
 type WalletStruct struct {
 	Internal struct {
+		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"sign"`
+		WalletLock         func(context.Context) error                                                                  `perm:"sign"`
+		WalletUnlock       func(context.Context, string) error                                                          `perm:"sign"`
+		WalletIsLock       func(context.Context) (bool, error)                                                          `perm:"sign"`
+		WalletChangePasswd func(context.Context, string) (bool, error)                                                  `perm:"sign"`
+		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"sign"`
+		DeleteKey2         func(address.Address) error                                                                  `perm:"sign"`
+
 		WalletNew    func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
 		WalletHas    func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
 		WalletList   func(context.Context) ([]address.Address, error)                                       `perm:"write"`
 		WalletSign   func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
-		WalletExport func(context.Context, address.Address) (*types.KeyInfo, error)                         `perm:"admin"`
+		WalletExport func(context.Context, address.Address, string) (*types.KeyInfo, error)                 `perm:"admin"`
 		WalletImport func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
-		WalletDelete func(context.Context, address.Address) error                                           `perm:"write"`
+		WalletDelete func(context.Context, address.Address, string) error                                   `perm:"write"`
+		Closing      func(context.Context) (<-chan struct{}, error)                                         `perm:"admin"`
 	}
 }
 
@@ -724,6 +766,14 @@ func (c *FullNodeStruct) MpoolBatchPushMessage(ctx context.Context, msgs []*type
 	return c.Internal.MpoolBatchPushMessage(ctx, msgs, spec)
 }
 
+func (c *FullNodeStruct) MpoolPushMessage2(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, passwd string) (*types.SignedMessage, error) {
+	return c.Internal.MpoolPushMessage2(ctx, msg, spec, passwd)
+}
+
+func (c *FullNodeStruct) MpoolListLocal(ctx context.Context) ([]*types.SignedMessage, error) {
+	return c.Internal.MpoolListLocal(ctx)
+}
+
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return c.Internal.MpoolSub(ctx)
 }
@@ -776,6 +826,10 @@ func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Addres
 	return c.Internal.WalletSignMessage(ctx, k, msg)
 }
 
+func (c *FullNodeStruct) WalletSignMessage2(ctx context.Context, k address.Address, msg *types.Message, passwd string) (*types.SignedMessage, error) {
+	return c.Internal.WalletSignMessage2(ctx, k, msg, passwd)
+}
+
 func (c *FullNodeStruct) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
 	return c.Internal.WalletVerify(ctx, k, msg, sig)
 }
@@ -788,20 +842,40 @@ func (c *FullNodeStruct) WalletSetDefault(ctx context.Context, a address.Address
 	return c.Internal.WalletSetDefault(ctx, a)
 }
 
-func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
-	return c.Internal.WalletExport(ctx, a)
+func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address, passwd string) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a, passwd)
 }
 
 func (c *FullNodeStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	return c.Internal.WalletImport(ctx, ki)
 }
 
-func (c *FullNodeStruct) WalletDelete(ctx context.Context, addr address.Address) error {
-	return c.Internal.WalletDelete(ctx, addr)
+func (c *FullNodeStruct) WalletDelete(ctx context.Context, addr address.Address, passwd string) error {
+	return c.Internal.WalletDelete(ctx, addr, passwd)
 }
 
 func (c *FullNodeStruct) WalletValidateAddress(ctx context.Context, str string) (address.Address, error) {
 	return c.Internal.WalletValidateAddress(ctx, str)
+}
+
+func (c *FullNodeStruct) WalletLock(ctx context.Context) error {
+	return c.Internal.WalletLock(ctx)
+}
+
+func (c *FullNodeStruct) WalletUnlock(ctx context.Context, passwd string) error {
+	return c.Internal.WalletUnlock(ctx, passwd)
+}
+
+func (c *FullNodeStruct) WalletIsLock(ctx context.Context) (bool, error) {
+	return c.Internal.WalletIsLock(ctx)
+}
+
+func (c *FullNodeStruct) WalletChangePasswd(ctx context.Context, newPasswd string) (bool, error) {
+	return c.Internal.WalletChangePasswd(ctx, newPasswd)
+}
+
+func (c *FullNodeStruct) WalletClearPasswd(ctx context.Context) (bool, error) {
+	return c.Internal.WalletClearPasswd(ctx)
 }
 
 func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
@@ -1278,6 +1352,10 @@ func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
 	return c.Internal.PledgeSector(ctx)
 }
 
+func (c *StorageMinerStruct) PledgeSectorToWorker(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.PledgeSectorToWorker(ctx, ID)
+}
+
 // Get the status of a given sector by ID
 func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
 	return c.Internal.SectorsStatus(ctx, sid, showOnChainInfo)
@@ -1400,12 +1478,19 @@ func (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.C
 	return c.Internal.ReturnFetch(ctx, callID, err)
 }
 
-func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
-	return c.Internal.SealingSchedDiag(ctx, doSched)
-}
-
 func (c *StorageMinerStruct) SealingAbort(ctx context.Context, call storiface.CallID) error {
 	return c.Internal.SealingAbort(ctx, call)
+}
+func (c *StorageMinerStruct) GetWorker(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error) {
+	return c.Internal.GetWorker(ctx)
+}
+
+func (c *StorageMinerStruct) SetWorkerParam(ctx context.Context, worker string, key string, value string) error {
+	return c.Internal.SetWorkerParam(ctx, worker, key, value)
+}
+
+func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
+	return c.Internal.SealingSchedDiag(ctx, doSched)
 }
 
 func (c *StorageMinerStruct) StorageAttach(ctx context.Context, si stores.StorageInfo, st fsutil.FsStat) error {
@@ -1606,6 +1691,13 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 
 func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
+}
+func (c *StorageMinerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.AddWorkerTask(ctx, ID)
+}
+
+func (c *StorageMinerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return c.Internal.GetWorkerWait(ctx, ID)
 }
 
 // WorkerStruct
@@ -1842,16 +1934,87 @@ func (c *WalletStruct) WalletSign(ctx context.Context, k address.Address, msg []
 	return c.Internal.WalletSign(ctx, k, msg, meta)
 }
 
-func (c *WalletStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
-	return c.Internal.WalletExport(ctx, a)
+func (c *WalletStruct) WalletExport(ctx context.Context, a address.Address, password string) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a, password)
 }
 
 func (c *WalletStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	return c.Internal.WalletImport(ctx, ki)
 }
 
-func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) error {
-	return c.Internal.WalletDelete(ctx, addr)
+func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address, pass string) error {
+	return c.Internal.WalletDelete(ctx, addr, pass)
+}
+
+func (c *WalletStruct) WalletSignMessage2(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) {
+	panic("not implemented")
+}
+func (c *WalletStruct) WalletLock(ctx context.Context) error {
+	return c.Internal.WalletLock(ctx)
+}
+
+func (c *WalletStruct) WalletUnlock(ctx context.Context, pass string) error {
+	return c.Internal.WalletUnlock(ctx, pass)
+}
+
+func (c *WalletStruct) WalletIsLock(ctx context.Context) (bool, error) {
+	return c.Internal.WalletIsLock(ctx)
+}
+
+func (c *WalletStruct) WalletChangePasswd(ctx context.Context, newPasswd string) (bool, error) {
+	return c.Internal.WalletChangePasswd(ctx, newPasswd)
+}
+
+func (c *WalletStruct) WalletClearPasswd(ctx context.Context) (bool, error) {
+	return c.Internal.WalletClearPasswd(ctx)
+}
+
+func (c *WalletStruct) DeleteKey2(addr address.Address) error {
+	return c.Internal.DeleteKey2(addr)
+}
+
+func (w *WorkerStruct) AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error) {
+	return w.Internal.AllowableRange(ctx, task)
+}
+
+func (c *WorkerStruct) GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo {
+	return c.Internal.GetWorkerInfo(ctx)
+}
+
+func (c *WorkerStruct) AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
+	return c.Internal.AddStore(ctx, ID, taskType)
+}
+
+func (c *WorkerStruct) DeleteStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
+	return c.Internal.DeleteStore(ctx, ID, taskType)
+}
+
+func (c *WorkerStruct) SetWorkerParams(ctx context.Context, key string, val string) error {
+	return c.Internal.SetWorkerParams(ctx, key, val)
+}
+
+func (c *WorkerStruct) GetWorkerGroup(ctx context.Context) string {
+	return c.Internal.GetWorkerGroup(ctx)
+}
+
+func (c *WorkerStruct) GetTaskCount(ctx context.Context) int32 {
+	return c.Internal.GetTaskCount(ctx)
+}
+
+func (c *WorkerStruct) SetID(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.SetID(ctx, ID)
+}
+
+func (c *WorkerStruct) GetID(ctx context.Context) uuid.UUID {
+	return c.Internal.GetID(ctx)
+}
+
+func (c *WorkerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.AddWorkerTask(ctx, ID)
+}
+
+func (c *WorkerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return c.Internal.GetWorkerWait(ctx, ID)
 }
 
 var _ api.Common = &CommonStruct{}

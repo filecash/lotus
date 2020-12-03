@@ -94,11 +94,11 @@ func (lw LedgerWallet) getKeyInfo(addr address.Address) (*LedgerKeyInfo, error) 
 	return &out, nil
 }
 
-func (lw LedgerWallet) WalletDelete(ctx context.Context, k address.Address) error {
+func (lw LedgerWallet) WalletDelete(ctx context.Context, k address.Address, password string) error {
 	return lw.ds.Delete(keyForAddr(k))
 }
 
-func (lw LedgerWallet) WalletExport(ctx context.Context, k address.Address) (*types.KeyInfo, error) {
+func (lw LedgerWallet) WalletExport(ctx context.Context, k address.Address, pass string) (*types.KeyInfo, error) {
 	return nil, fmt.Errorf("cannot export keys from ledger wallets")
 }
 
@@ -225,6 +225,37 @@ func (lw LedgerWallet) WalletNew(ctx context.Context, t types.KeyType) (address.
 	lki.Path = path
 
 	return lw.importKey(lki)
+}
+
+func (lw *LedgerWallet) WalletSignMessage2(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) {
+	return nil, nil
+}
+func (lw *LedgerWallet) WalletLock(context.Context) error {
+	return nil
+}
+
+// WalletUnlock
+func (lw *LedgerWallet) WalletUnlock(context.Context, string) error {
+	return nil
+}
+
+// WalletIsLock
+func (lw *LedgerWallet) WalletIsLock(context.Context) (bool, error) {
+	return false, nil
+}
+
+// Wallet Change Password
+func (lw *LedgerWallet) WalletChangePasswd(context.Context, string) (bool, error) {
+	return false, nil
+}
+
+// Wallet Clear Passwd
+func (lw *LedgerWallet) WalletClearPasswd(context.Context) (bool, error) {
+	return false, nil
+}
+
+func (lw *LedgerWallet) DeleteKey2(address.Address) error {
+	return nil
 }
 
 func (lw *LedgerWallet) Get() api.WalletAPI {

@@ -16,13 +16,15 @@ type allocSelector struct {
 	index stores.SectorIndex
 	alloc storiface.SectorFileType
 	ptype storiface.PathType
+	task  sealtasks.TaskType
 }
 
-func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType) *allocSelector {
+func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType, task sealtasks.TaskType) *allocSelector {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,
 		ptype: ptype,
+		task:  task,
 	}
 }
 
@@ -65,6 +67,14 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 }
 
 func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+	v, ok := a.reqTask[s.task]
+	if ok && v > 0 {
+		return true, nil
+	}
+	v, ok = b.reqTask[s.task]
+	if ok && v > 0 {
+		return false, nil
+	}
 	return a.utilization() < b.utilization(), nil
 }
 

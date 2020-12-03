@@ -155,7 +155,7 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 		return xerrors.New("'To' address cannot be empty")
 	}
 
-	if m.To == build.ZeroAddress && version >= network.Version7 {
+	if m.To == build.ZeroAddress && version >= network.Version8 {
 		return xerrors.New("invalid 'To' address")
 	}
 

@@ -53,12 +53,14 @@ var terminateSectorCmd = &cli.Command{
 			return err
 		}
 		defer closer()
+		log.Info("1")
 
 		api, acloser, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
 		defer acloser()
+		log.Info("2")
 
 		ctx := lcli.ReqContext(cctx)
 

@@ -3,9 +3,12 @@ package sectorstorage
 import (
 	"time"
 
+	"context"
+
 	"github.com/google/uuid"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"golang.org/x/xerrors"
 )
 
 func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
@@ -91,4 +94,32 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 	}
 
 	return out
+}
+
+func (m *Manager) GetWorker(ctx context.Context) map[string]WorkerInfo {
+	m.sched.workersLk.Lock()
+	defer m.sched.workersLk.Unlock()
+
+	out := map[string]WorkerInfo{}
+
+	for id, handle := range m.sched.workers {
+		info := handle.workerRpc.GetWorkerInfo(ctx)
+		out[id.String()] = info
+	}
+	return out
+}
+
+func (m *Manager) SetWorkerParam(ctx context.Context, worker, key, value string) error {
+	m.sched.workersLk.Lock()
+	defer m.sched.workersLk.Unlock()
+
+	uuidWorker, err := uuid.Parse(worker)
+	if err != nil {
+		return err
+	}
+	w, exist := m.sched.workers[WorkerID(uuidWorker)]
+	if !exist {
+		return xerrors.Errorf("worker not found: %s", key)
+	}
+	return w.workerRpc.SetWorkerParams(ctx, key, value)
 }

@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
@@ -151,6 +152,10 @@ var DaemonCmd = &cli.Command{
 		&cli.PathFlag{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
+		&cli.BoolFlag{
+			Name:  "setup-passwd",
+			Usage: "create passwd file in ketstore",
+			Value: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -216,6 +221,26 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 		freshRepo := err != repo.ErrRepoExists
+
+		passwdPath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		if cctx.Bool("setup-passwd") {
+			passwd := wallet.Prompt("Enter your PIN:\n")
+			err := wallet.SetupPasswd([]byte(passwd), passwdPath+"/keystore/passwd")
+			if err != nil {
+				return err
+			}
+		} else {
+			ok := wallet.GetSetupState(passwdPath + "/keystore/passwd")
+			if !ok {
+				log.Info("Passwd is not setup")
+			} else {
+				log.Info("Passwd is setup")
+			}
+		}
 
 		if !isLite {
 			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), 0); err != nil {

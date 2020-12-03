@@ -146,7 +146,12 @@ func addCachePathsForSectorSize(chk map[string]int64, cacheDir string, ssize abi
 	case 8 << 20:
 		fallthrough
 	case 512 << 20:
+	case 4 << 30:
 		chk[filepath.Join(cacheDir, "sc-02-data-tree-r-last.dat")] = 0
+	case 16 << 30:
+		for i := 0; i < 4; i++ {
+			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0
+		}
 	case 32 << 30:
 		for i := 0; i < 8; i++ {
 			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0

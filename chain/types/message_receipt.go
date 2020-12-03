@@ -10,6 +10,7 @@ type MessageReceipt struct {
 	ExitCode exitcode.ExitCode
 	Return   []byte
 	GasUsed  int64
+	Refund   BigInt
 }
 
 func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {

@@ -153,7 +153,7 @@ func SetWPoStChallengeWindow(period abi.ChainEpoch) {
 }
 
 func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
-	if nwVer <= network.Version3 {
+	if nwVer <= network.Version4 {
 		return 10
 	}
 
@@ -165,8 +165,8 @@ func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 }
 
 // TODO: we'll probably need to abstract over this better in the future.
-func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
-	sectorsPerPart, err := builtin3.PoStProofWindowPoStPartitionSectors(p)
+func GetMaxPoStPartitions(p abi.RegisteredPoStProof, nv network.Version) (int, error) {
+	sectorsPerPart, err := builtin2.PoStProofWindowPoStPartitionSectors(p, nv)
 	if err != nil {
 		return 0, err
 	}

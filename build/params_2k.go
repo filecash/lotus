@@ -10,6 +10,7 @@ import (
 const BootstrappersFile = ""
 const GenesisFile = ""
 
+const UpgradeCreeperHeight = -1
 const UpgradeBreezeHeight = -1
 const BreezeGasTampingDuration = 0
 
@@ -18,8 +19,11 @@ const UpgradeIgnitionHeight = -2
 const UpgradeRefuelHeight = -3
 const UpgradeTapeHeight = -4
 
-const UpgradeActorsV2Height = 10
-const UpgradeLiftoffHeight = -5
+const UpgradeHogwartsHeight = -5
+const UpgradeSiriusHeight = -6
+
+var UpgradeActorsV2Height = abi.ChainEpoch(10)
+var UpgradeLiftoffHeight = abi.ChainEpoch(-5)
 
 const UpgradeKumquatHeight = 15
 const UpgradeCalicoHeight = 20

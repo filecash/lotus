@@ -27,11 +27,16 @@ Please send an email to security@filecoin.org. See our [security policy](SECURIT
 ## Related packages
 
 These repos are independent and reusable modules, but are tightly integrated into Lotus to make up a fully featured Filecoin implementation:
+The main branches under development at the moment are:
+* [`master`](https://github.com/filecash/lotus): current testnet.
+* [`next`](https://github.com/filecash/lotus/tree/next): working branch with chain-breaking changes.
+* [`ntwk-calibration`](https://github.com/filecash/lotus/tree/ntwk-calibration): devnet running one of `next` commits.
 
 - [go-fil-markets](https://github.com/filecoin-project/go-fil-markets) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/markets-shared-components-5daa144a7046a60001c6e253/board)
 - [specs-actors](https://github.com/filecoin-project/specs-actors) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
 
 ## Contribute
+All work is tracked via issues. An attempt at keeping an up-to-date view on remaining work towards Mainnet launch can be seen at the [lotus github project board](https://github.com/orgs/filecash/projects/8). The issues labeled with `incentives` are there to identify the issues needed for Space Race launch.
 
 Lotus is a universally open project and welcomes contributions of all kinds: code, docs, and more. However, before making a contribution, we ask you to heed these recommendations:
 
@@ -49,7 +54,10 @@ When implementing a change:
 6. Add tests.
 7. Title the PR in a meaningful way and describe the rationale and the thought process in the PR description.
 8. Write clean, thoughtful, and detailed [commit messages](https://chris.beams.io/posts/git-commit/). This is even more important than the PR description, because commit messages are stored _inside_ the Git history. One good rule is: if you are happy posting the commit message as the PR description, then it's a good commit message.
+- [This repo](https://github.com/filecash/lotus)
+- [go-fil-markets](https://github.com/filecash/go-fil-markets) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/markets-shared-components-5daa144a7046a60001c6e253/board)
+- [spec-actors](https://github.com/filecash/specs-actors) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
 
 ## License
 
-Dual-licensed under [MIT](https://github.com/filecoin-project/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecoin-project/lotus/blob/master/LICENSE-APACHE)
+Dual-licensed under [MIT](https://github.com/filecash/lotus/blob/master/LICENSE-MIT) + [Apache 2.0](https://github.com/filecash/lotus/blob/master/LICENSE-APACHE)

@@ -31,12 +31,12 @@ var sendCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "gas-premium",
-			Usage: "specify gas price to use in AttoFIL",
+			Usage: "specify gas price to use in AttoFIC",
 			Value: "0",
 		},
 		&cli.StringFlag{
 			Name:  "gas-feecap",
-			Usage: "specify gas fee cap to use in AttoFIL",
+			Usage: "specify gas fee cap to use in AttoFIC",
 			Value: "0",
 		},
 		&cli.Int64Flag{
@@ -65,6 +65,9 @@ var sendCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "force",
 			Usage: "must be specified for the action to take effect if maybe SysErrInsufficientFunds etc",
+		&cli.StringFlag{
+			Name:  "passwd",
+			Usage: "unlock wallet with passwd",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -165,6 +168,11 @@ var sendCmd = &cli.Command{
 		if cctx.IsSet("nonce") {
 			msg.Nonce = cctx.Uint64("nonce")
 			sm, err := api.WalletSignMessage(ctx, fromAddr, msg)
+		passwd := cctx.String("passwd")
+
+		if cctx.Int64("nonce") > 0 {
+			msg.Nonce = uint64(cctx.Int64("nonce"))
+			sm, err := api.WalletSignMessage2(ctx, fromAddr, msg, passwd)
 			if err != nil {
 				return err
 			}
@@ -175,7 +183,7 @@ var sendCmd = &cli.Command{
 			}
 			fmt.Println(sm.Cid())
 		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg, nil)
+			sm, err := api.MpoolPushMessage2(ctx, msg, nil, passwd)
 			if err != nil {
 				return err
 			}

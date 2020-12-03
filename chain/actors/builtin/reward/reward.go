@@ -60,8 +60,8 @@ type State interface {
 	CumsumBaseline() (abi.StoragePower, error)
 	CumsumRealized() (abi.StoragePower, error)
 
-	InitialPledgeForPower(abi.StoragePower, abi.TokenAmount, *builtin.FilterEstimate, abi.TokenAmount) (abi.TokenAmount, error)
-	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower) (abi.TokenAmount, error)
+	InitialPledgeForPower(abi.StoragePower, abi.TokenAmount, *builtin.FilterEstimate, abi.TokenAmount, abi.ChainEpoch) (abi.TokenAmount, error)
+	PreCommitDepositForPower(builtin.FilterEstimate, abi.StoragePower, abi.ChainEpoch) (abi.TokenAmount, error)
 }
 
 type AwardBlockRewardParams = reward0.AwardBlockRewardParams

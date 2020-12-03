@@ -1579,7 +1579,7 @@ func formatOutput(t string, val []byte) (string, error) {
 	case "big", "int", "bigint":
 		bi := types.BigFromBytes(val)
 		return bi.String(), nil
-	case "fil":
+	case "fic":
 		bi := types.FIL(types.BigFromBytes(val))
 		return bi.String(), nil
 	case "pid", "peerid", "peer":

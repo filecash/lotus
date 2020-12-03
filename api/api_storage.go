@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -37,6 +38,8 @@ type StorageMiner interface {
 
 	// Temp api for testing
 	PledgeSector(context.Context) error
+
+	PledgeSectorToWorker(context.Context, uuid.UUID) error
 
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
@@ -89,6 +92,8 @@ type StorageMiner interface {
 	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)
 	storiface.WorkerReturn
 
+	GetWorker(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error)
+	SetWorkerParam(ctx context.Context, worker string, key string, value string) error
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error)
 	SealingAbort(ctx context.Context, call storiface.CallID) error
@@ -144,6 +149,8 @@ type StorageMiner interface {
 	CreateBackup(ctx context.Context, fpath string) error
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error)
+	AddWorkerTask(ctx context.Context, ID uuid.UUID) error
+	GetWorkerWait(ctx context.Context, ID uuid.UUID) int
 }
 
 type SealRes struct {

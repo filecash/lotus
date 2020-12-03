@@ -63,11 +63,14 @@ var GenesisNetworkVersion = func() network.Version {
 	if build.UpgradeIgnitionHeight >= 0 {
 		return network.Version2
 	}
-	if build.UpgradeActorsV2Height >= 0 {
+	if build.UpgradeHogwartsHeight >= 0 {
 		return network.Version3
 	}
+	if build.UpgradeActorsV2Height >= 0 {
+		return network.Version4
+	}
 	if build.UpgradeLiftoffHeight >= 0 {
-		return network.Version3
+		return network.Version4
 	}
 	return build.ActorUpgradeNetworkVersion - 1 // genesis requires actors v0.
 }()

@@ -189,7 +189,7 @@ var actorSetPeeridCmd = &cli.Command{
 var actorWithdrawCmd = &cli.Command{
 	Name:      "withdraw",
 	Usage:     "withdraw available balance",
-	ArgsUsage: "[amount (FIL)]",
+	ArgsUsage: "[amount (FIC)]",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {

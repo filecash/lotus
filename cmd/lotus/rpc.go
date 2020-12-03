@@ -118,6 +118,12 @@ func serveRPC(a api.FullNode, stop node.StopFunc, addr multiaddr.Multiaddr, shut
 		<-shutdownDone
 		return nil
 	}
+	defer func() {
+		if err := recover(); err != nil {
+			<-shutdownDone
+			log.Errorf("jsonrpc package is too big")
+		}
+	}()
 	return err
 }
 

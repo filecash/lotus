@@ -90,7 +90,7 @@ var mathSumCmd = &cli.Command{
 			fmt.Printf("%s\n", types.SizeStr(val))
 		case "byte10":
 			fmt.Printf("%s\n", types.DeciStr(val))
-		case "fil":
+		case "fic":
 			fmt.Printf("%s\n", types.FIL(val))
 		case "raw":
 			fmt.Printf("%s\n", val)

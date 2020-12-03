@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 )
 
@@ -47,6 +48,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 
 		closingMgr: make(chan struct{}),
 		closedMgr:  make(chan struct{}),
+		reqTask:    make(map[sealtasks.TaskType]uint),
 	}
 
 	wid := WorkerID(sessID)
@@ -55,7 +57,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 	_, exist := sh.workers[wid]
 	if exist {
 		log.Warnw("duplicated worker added", "id", wid)
-
+		sh.workersLk.Unlock()
 		// this is ok, we're already handling this worker in a different goroutine
 		sh.workersLk.Unlock()
 		return nil
@@ -392,6 +394,10 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 
 	needRes := ResourceTable[req.taskType][req.sector.ProofType]
 
+	sh.execSectorWorker.lk.Lock()
+	sh.execSectorWorker.group[req.sector.ID] = w.workerRpc.GetWorkerGroup(req.ctx)
+	sh.execSectorWorker.lk.Unlock()
+
 	w.lk.Lock()
 	w.preparing.add(w.info.Resources, needRes)
 	w.lk.Unlock()
@@ -402,6 +408,9 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 		sh.workersLk.Lock()
 
 		if err != nil {
+			_ = w.workerRpc.DeleteStore(req.ctx, req.sector.ID, req.taskType)
+			w.deleteTask(req.taskType)
+			
 			w.lk.Lock()
 			w.preparing.free(w.info.Resources, needRes)
 			w.lk.Unlock()
@@ -439,6 +448,8 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			// Do the work!
 			err = req.work(req.ctx, sh.workTracker.worker(sw.wid, w.workerRpc))
 
+			_ = w.workerRpc.DeleteStore(req.ctx, req.sector.ID, req.taskType)
+
 			select {
 			case req.ret <- workerResponse{err: err}:
 			case <-req.ctx.Done():
@@ -449,6 +460,14 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 
 			return nil
 		})
+
+		if req.taskType == sealtasks.TTFetch {
+			sh.execSectorWorker.lk.Lock()
+			delete(sh.execSectorWorker.group, req.sector.ID)
+			sh.execSectorWorker.lk.Unlock()
+		}
+
+		w.deleteTask(req.taskType)
 
 		sh.workersLk.Unlock()
 

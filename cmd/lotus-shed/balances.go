@@ -481,6 +481,7 @@ var chainPledgeCmd = &cli.Command{
 				pledgeCollateral,
 				&powerSmoothed,
 				circ.FilCirculating,
+				abi.ChainEpoch(epoch),
 			)
 			if err != nil {
 				return xerrors.Errorf("calculating initial pledge: %w", err)
