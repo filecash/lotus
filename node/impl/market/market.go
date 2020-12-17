@@ -24,3 +24,7 @@ func (a *MarketAPI) MarketReserveFunds(ctx context.Context, wallet address.Addre
 func (a *MarketAPI) MarketReleaseFunds(ctx context.Context, addr address.Address, amt types.BigInt) error {
 	return a.FMgr.Release(addr, amt)
 }
+
+func (a *MarketAPI) MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error) {
+	return a.FMgr.Withdraw(ctx, wallet, addr, amt)
+}

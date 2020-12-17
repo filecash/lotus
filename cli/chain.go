@@ -1055,6 +1055,11 @@ var chainExportCmd = &cli.Command{
 			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
 		}
 
+		_, err = os.Stat(cctx.Args().First())
+ 		if err == nil || !os.IsNotExist(err) {
+ 			return fmt.Errorf("file is already exists")
+ 		}
+
 		fi, err := os.Create(cctx.Args().First())
 		if err != nil {
 			return err

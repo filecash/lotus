@@ -133,9 +133,10 @@ type FullNodeStruct struct {
 		MpoolPush          func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 		MpoolPushUntrusted func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 
-		MpoolPushMessage func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error) `perm:"sign"`
-		MpoolGetNonce    func(context.Context, address.Address) (uint64, error)                                    `perm:"read"`
-		MpoolSub         func(context.Context) (<-chan api.MpoolUpdate, error)                                     `perm:"read"`
+		MpoolPushMessage  func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)         `perm:"sign"`
+		MpoolPushMessage2 func(context.Context, *types.Message, *api.MessageSendSpec, string) (*types.SignedMessage, error) `perm:"sign"`
+		MpoolGetNonce     func(context.Context, address.Address) (uint64, error)                                            `perm:"read"`
+		MpoolSub          func(context.Context) (<-chan api.MpoolUpdate, error)                                             `perm:"read"`
 
 		MpoolBatchPush          func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
 		MpoolBatchPushUntrusted func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
@@ -144,19 +145,25 @@ type FullNodeStruct struct {
 		MinerGetBaseInfo func(context.Context, address.Address, abi.ChainEpoch, types.TipSetKey) (*api.MiningBaseInfo, error) `perm:"read"`
 		MinerCreateBlock func(context.Context, *api.BlockTemplate) (*types.BlockMsg, error)                                   `perm:"write"`
 
-		WalletNew             func(context.Context, types.KeyType) (address.Address, error)                        `perm:"write"`
-		WalletHas             func(context.Context, address.Address) (bool, error)                                 `perm:"write"`
-		WalletList            func(context.Context) ([]address.Address, error)                                     `perm:"write"`
-		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                         `perm:"read"`
-		WalletSign            func(context.Context, address.Address, []byte) (*crypto.Signature, error)            `perm:"sign"`
-		WalletSignMessage     func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error) `perm:"sign"`
-		WalletVerify          func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)      `perm:"read"`
-		WalletDefaultAddress  func(context.Context) (address.Address, error)                                       `perm:"write"`
-		WalletSetDefault      func(context.Context, address.Address) error                                         `perm:"admin"`
-		WalletExport          func(context.Context, address.Address) (*types.KeyInfo, error)                       `perm:"admin"`
-		WalletImport          func(context.Context, *types.KeyInfo) (address.Address, error)                       `perm:"admin"`
-		WalletDelete          func(context.Context, address.Address) error                                         `perm:"write"`
-		WalletValidateAddress func(context.Context, string) (address.Address, error)                               `perm:"read"`
+		WalletNew             func(context.Context, types.KeyType) (address.Address, error)                                `perm:"write"`
+		WalletHas             func(context.Context, address.Address) (bool, error)                                         `perm:"write"`
+		WalletList            func(context.Context) ([]address.Address, error)                                             `perm:"write"`
+		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                                 `perm:"read"`
+		WalletSign            func(context.Context, address.Address, []byte) (*crypto.Signature, error)                    `perm:"sign"`
+		WalletSignMessage     func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)         `perm:"sign"`
+		WalletSignMessage2    func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"sign"`
+		WalletVerify          func(context.Context, address.Address, []byte, *crypto.Signature) (bool, error)              `perm:"read"`
+		WalletDefaultAddress  func(context.Context) (address.Address, error)                                               `perm:"write"`
+		WalletSetDefault      func(context.Context, address.Address) error                                                 `perm:"admin"`
+		WalletExport          func(context.Context, address.Address, string) (*types.KeyInfo, error)                       `perm:"admin"`
+		WalletImport          func(context.Context, *types.KeyInfo) (address.Address, error)                               `perm:"admin"`
+		WalletDelete          func(context.Context, address.Address, string) error                                         `perm:"write"`
+		WalletValidateAddress func(context.Context, string) (address.Address, error)                                       `perm:"read"`
+		WalletLock            func(context.Context) error                                                                  `perm:"admin"`
+		WalletUnlock          func(context.Context, string) error                                                          `perm:"admin"`
+		WalletIsLock          func(context.Context) (bool, error)                                                          `perm:"admin"`
+		WalletChangePasswd    func(context.Context, string) (bool, error)                                                  `perm:"admin"`
+		WalletClearPasswd     func(context.Context) (bool, error)                                                          `perm:"admin"`
 
 		ClientImport                              func(ctx context.Context, ref api.FileRef) (*api.ImportRes, error)                                                `perm:"admin"`
 		ClientListImports                         func(ctx context.Context) ([]api.Import, error)                                                                   `perm:"write"`
@@ -248,6 +255,7 @@ type FullNodeStruct struct {
 
 		MarketReserveFunds func(ctx context.Context, wallet address.Address, addr address.Address, amt types.BigInt) (cid.Cid, error) `perm:"sign"`
 		MarketReleaseFunds func(ctx context.Context, addr address.Address, amt types.BigInt) error                                    `perm:"sign"`
+		MarketWithdraw     func(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error)                 `perm:"sign"`
 
 		PaychGet                    func(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error)           `perm:"sign"`
 		PaychGetWaitReady           func(context.Context, cid.Cid) (address.Address, error)                                                   `perm:"sign"`
@@ -271,6 +279,9 @@ type FullNodeStruct struct {
 	}
 }
 
+func (c *FullNodeStruct) MarketWithdraw(ctx context.Context, wallet, addr address.Address, amt types.BigInt) (cid.Cid, error) {
+	return c.Internal.MarketWithdraw(ctx, wallet, addr, amt)
+}
 func (c *FullNodeStruct) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
 	return c.Internal.StateMinerSectorCount(ctx, addr, tsk)
 }
@@ -376,7 +387,6 @@ type StorageMinerStruct struct {
 type WorkerStruct struct {
 	Internal struct {
 		// TODO: lower perms
-
 		Version func(context.Context) (build.Version, error) `perm:"admin"`
 
 		TaskTypes func(context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
@@ -416,6 +426,14 @@ type WorkerStruct struct {
 		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
 		SetWorkerParams func(ctx context.Context, key string, val string) error                       `perm:"admin"`
 		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
+
+		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error)
+		WalletLock         func(context.Context) error
+		WalletUnlock       func(context.Context, string) error
+		WalletIsLock       func(context.Context) (bool, error)
+		WalletChangePasswd func(context.Context, string) (bool, error)
+		WalletClearPasswd  func(context.Context) (bool, error)
+		DeleteKey2         func(address.Address)
 	}
 }
 
@@ -453,13 +471,21 @@ type GatewayStruct struct {
 
 type WalletStruct struct {
 	Internal struct {
+		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error)
+		WalletLock         func(context.Context) error
+		WalletUnlock       func(context.Context, string) error
+		WalletIsLock       func(context.Context) (bool, error)
+		WalletChangePasswd func(context.Context, string) (bool, error)
+		WalletClearPasswd  func(context.Context) (bool, error)
+		DeleteKey2         func(address.Address) error
+
 		WalletNew    func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
 		WalletHas    func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
 		WalletList   func(context.Context) ([]address.Address, error)                                       `perm:"write"`
 		WalletSign   func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
-		WalletExport func(context.Context, address.Address) (*types.KeyInfo, error)                         `perm:"admin"`
+		WalletExport func(context.Context, address.Address, string) (*types.KeyInfo, error)                 `perm:"admin"`
 		WalletImport func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
-		WalletDelete func(context.Context, address.Address) error                                           `perm:"write"`
+		WalletDelete func(context.Context, address.Address, string) error                                   `perm:"write"`
 		Closing      func(context.Context) (<-chan struct{}, error)                                         `perm:"admin"`
 	}
 }
@@ -718,6 +744,10 @@ func (c *FullNodeStruct) MpoolBatchPushMessage(ctx context.Context, msgs []*type
 	return c.Internal.MpoolBatchPushMessage(ctx, msgs, spec)
 }
 
+func (c *FullNodeStruct) MpoolPushMessage2(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, passwd string) (*types.SignedMessage, error) {
+	return c.Internal.MpoolPushMessage2(ctx, msg, spec, passwd)
+}
+
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {
 	return c.Internal.MpoolSub(ctx)
 }
@@ -770,6 +800,10 @@ func (c *FullNodeStruct) WalletSignMessage(ctx context.Context, k address.Addres
 	return c.Internal.WalletSignMessage(ctx, k, msg)
 }
 
+func (c *FullNodeStruct) WalletSignMessage2(ctx context.Context, k address.Address, msg *types.Message, passwd string) (*types.SignedMessage, error) {
+	return c.Internal.WalletSignMessage2(ctx, k, msg, passwd)
+}
+
 func (c *FullNodeStruct) WalletVerify(ctx context.Context, k address.Address, msg []byte, sig *crypto.Signature) (bool, error) {
 	return c.Internal.WalletVerify(ctx, k, msg, sig)
 }
@@ -782,20 +816,40 @@ func (c *FullNodeStruct) WalletSetDefault(ctx context.Context, a address.Address
 	return c.Internal.WalletSetDefault(ctx, a)
 }
 
-func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
-	return c.Internal.WalletExport(ctx, a)
+func (c *FullNodeStruct) WalletExport(ctx context.Context, a address.Address, passwd string) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a, passwd)
 }
 
 func (c *FullNodeStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	return c.Internal.WalletImport(ctx, ki)
 }
 
-func (c *FullNodeStruct) WalletDelete(ctx context.Context, addr address.Address) error {
-	return c.Internal.WalletDelete(ctx, addr)
+func (c *FullNodeStruct) WalletDelete(ctx context.Context, addr address.Address, passwd string) error {
+	return c.Internal.WalletDelete(ctx, addr, passwd)
 }
 
 func (c *FullNodeStruct) WalletValidateAddress(ctx context.Context, str string) (address.Address, error) {
 	return c.Internal.WalletValidateAddress(ctx, str)
+}
+
+func (c *FullNodeStruct) WalletLock(ctx context.Context) error {
+	return c.Internal.WalletLock(ctx)
+}
+
+func (c *FullNodeStruct) WalletUnlock(ctx context.Context, passwd string) error {
+	return c.Internal.WalletUnlock(ctx, passwd)
+}
+
+func (c *FullNodeStruct) WalletIsLock(ctx context.Context) (bool, error) {
+	return c.Internal.WalletIsLock(ctx)
+}
+
+func (c *FullNodeStruct) WalletChangePasswd(ctx context.Context, newPasswd string) (bool, error) {
+	return c.Internal.WalletChangePasswd(ctx, newPasswd)
+}
+
+func (c *FullNodeStruct) WalletClearPasswd(ctx context.Context) (bool, error) {
+	return c.Internal.WalletClearPasswd(ctx)
 }
 
 func (c *FullNodeStruct) MpoolGetNonce(ctx context.Context, addr address.Address) (uint64, error) {
@@ -1763,16 +1817,43 @@ func (c *WalletStruct) WalletSign(ctx context.Context, k address.Address, msg []
 	return c.Internal.WalletSign(ctx, k, msg, meta)
 }
 
-func (c *WalletStruct) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
-	return c.Internal.WalletExport(ctx, a)
+func (c *WalletStruct) WalletExport(ctx context.Context, a address.Address, password string) (*types.KeyInfo, error) {
+	return c.Internal.WalletExport(ctx, a, password)
 }
 
 func (c *WalletStruct) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
 	return c.Internal.WalletImport(ctx, ki)
 }
 
-func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address) error {
-	return c.Internal.WalletDelete(ctx, addr)
+func (c *WalletStruct) WalletDelete(ctx context.Context, addr address.Address, pass string) error {
+	return c.Internal.WalletDelete(ctx, addr, pass)
+}
+
+func (c *WalletStruct) WalletSignMessage2(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) {
+	panic("not implemented")
+}
+func (c *WalletStruct) WalletLock(ctx context.Context) error {
+	return c.Internal.WalletLock(ctx)
+}
+
+func (c *WalletStruct) WalletUnlock(ctx context.Context, pass string) error {
+	return c.Internal.WalletUnlock(ctx, pass)
+}
+
+func (c *WalletStruct) WalletIsLock(ctx context.Context) (bool, error) {
+	return c.Internal.WalletIsLock(ctx)
+}
+
+func (c *WalletStruct) WalletChangePasswd(ctx context.Context, newPasswd string) (bool, error) {
+	return c.Internal.WalletChangePasswd(ctx, newPasswd)
+}
+
+func (c *WalletStruct) WalletClearPasswd(ctx context.Context) (bool, error) {
+	return c.Internal.WalletClearPasswd(ctx)
+}
+
+func (c *WalletStruct) DeleteKey2(addr address.Address) error {
+	return c.Internal.DeleteKey2(addr)
 }
 
 func (w *WorkerStruct) AddRange(ctx context.Context, task sealtasks.TaskType, addType int) error {
