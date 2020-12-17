@@ -61,6 +61,10 @@ var sendCmd = &cli.Command{
 			Name:  "params-hex",
 			Usage: "specify invocation parameters in hex",
 		},
+		&cli.StringFlag{
+			Name:  "passwd",
+			Usage: "unlock wallet with passwd",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 2 {
@@ -143,9 +147,11 @@ var sendCmd = &cli.Command{
 			Params:     params,
 		}
 
+		passwd := cctx.String("passwd")
+
 		if cctx.Int64("nonce") > 0 {
 			msg.Nonce = uint64(cctx.Int64("nonce"))
-			sm, err := api.WalletSignMessage(ctx, fromAddr, msg)
+			sm, err := api.WalletSignMessage2(ctx, fromAddr, msg, passwd)
 			if err != nil {
 				return err
 			}
@@ -156,7 +162,7 @@ var sendCmd = &cli.Command{
 			}
 			fmt.Println(sm.Cid())
 		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg, nil)
+			sm, err := api.MpoolPushMessage2(ctx, msg, nil, passwd)
 			if err != nil {
 				return err
 			}

@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
@@ -144,6 +145,11 @@ var DaemonCmd = &cli.Command{
 			Name:  "api-max-req-size",
 			Usage: "maximum API request size accepted by the JSON RPC server",
 		},
+		&cli.BoolFlag{
+			Name:  "setup-passwd",
+			Usage: "create passwd file in ketstore",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
@@ -205,6 +211,26 @@ var DaemonCmd = &cli.Command{
 
 		if err := r.Init(repo.FullNode); err != nil && err != repo.ErrRepoExists {
 			return xerrors.Errorf("repo init error: %w", err)
+		}
+
+		passwdPath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+
+		if cctx.Bool("setup-passwd") {
+			passwd := wallet.Prompt("Enter your PIN:\n")
+			err := wallet.SetupPasswd([]byte(passwd), passwdPath+"/keystore/passwd")
+			if err != nil {
+				return err
+			}
+		} else {
+			ok := wallet.GetSetupState(passwdPath + "/keystore/passwd")
+			if !ok {
+				log.Info("Passwd is not setup")
+			} else {
+				log.Info("Passwd is setup")
+			}
 		}
 
 		if !isLite {

@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -177,6 +178,71 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	if b.LessThan(msg.Value) {
 		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
 	}
+
+	if msg.Method == 0 {
+		return nil, xerrors.Errorf("the method is lock, pelease input passwd")
+	}
+
+	// Sign and push the message
+	return a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
+		if _, err := a.Mpool.Push(smsg); err != nil {
+			return xerrors.Errorf("mpool push: failed to push message: %w", err)
+		}
+		return nil
+	})
+}
+
+func (a *MpoolAPI) MpoolPushMessage2(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, passwd string) (*types.SignedMessage, error) {
+	cp := *msg
+	msg = &cp
+	inMsg := *msg
+	fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("getting key address: %w", err)
+	}
+	{
+		done, err := a.PushLocks.TakeLock(ctx, fromA)
+		if err != nil {
+			return nil, xerrors.Errorf("taking lock: %w", err)
+		}
+		defer done()
+	}
+
+	if msg.Nonce != 0 {
+		return nil, xerrors.Errorf("MpoolPushMessage expects message nonce to be 0, was %d", msg.Nonce)
+	}
+
+	msg, err = a.GasAPI.GasEstimateMessageGas(ctx, msg, spec, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
+	}
+
+	if msg.GasPremium.GreaterThan(msg.GasFeeCap) {
+		inJson, _ := json.Marshal(inMsg)
+		outJson, _ := json.Marshal(msg)
+		return nil, xerrors.Errorf("After estimation, GasPremium is greater than GasFeeCap, inmsg: %s, outmsg: %s",
+			inJson, outJson)
+	}
+
+	if msg.From.Protocol() == address.ID {
+		log.Warnf("Push from ID address (%s), adjusting to %s", msg.From, fromA)
+		msg.From = fromA
+	}
+
+	b, err := a.WalletBalance(ctx, msg.From)
+	if err != nil {
+		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
+	}
+
+	if b.LessThan(msg.Value) {
+		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
+	}
+
+	oldPasswd := wallet.WalletPasswd
+	wallet.WalletPasswd = passwd
+	defer func() {
+		wallet.WalletPasswd = oldPasswd
+	}()
 
 	// Sign and push the message
 	return a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {

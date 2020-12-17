@@ -41,7 +41,21 @@ type WalletAPI interface {
 
 	WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta MsgMeta) (*crypto.Signature, error)
 
-	WalletExport(context.Context, address.Address) (*types.KeyInfo, error)
+	WalletExport(context.Context, address.Address, string) (*types.KeyInfo, error)
 	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)
-	WalletDelete(context.Context, address.Address) error
+	WalletDelete(context.Context, address.Address, string) error
+
+	// WalletSignMessage signs the given message using the given address with password.
+	WalletSignMessage2(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error)
+	WalletLock(context.Context) error
+	// WalletUnlock
+	WalletUnlock(context.Context, string) error
+	// WalletIsLock
+	WalletIsLock(context.Context) (bool, error)
+	// Wallet Change Password
+	WalletChangePasswd(context.Context, string) (bool, error)
+	// Wallet Clear Passwd
+	WalletClearPasswd(context.Context) (bool, error)
+
+	DeleteKey2(address.Address) error
 }
