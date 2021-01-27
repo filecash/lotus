@@ -123,7 +123,7 @@ func TestInvokerBasic(t *testing.T) {
 	{
 		_, aerr := code[1](&Runtime{
 			vm: &VM{ntwkVersion: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
-				return network.Version7
+				return network.Version8
 			}},
 		}, []byte{99})
 		if aerrors.IsFatal(aerr) {

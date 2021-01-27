@@ -179,7 +179,7 @@ func (*ActorRegistry) transform(instance invokee) (nativeCode, error) {
 				inBytes := in[1].Interface().([]byte)
 				if err := DecodeParams(inBytes, param.Interface()); err != nil {
 					ec := exitcode.ErrSerialization
-					if rt.NetworkVersion() < network.Version7 {
+					if rt.NetworkVersion() < network.Version8 {
 						ec = 1
 					}
 					aerr := aerrors.Absorb(err, ec, "failed to decode parameters")

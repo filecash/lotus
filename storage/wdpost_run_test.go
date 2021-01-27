@@ -143,7 +143,7 @@ func TestWDPostDoPost(t *testing.T) {
 	mockStgMinerAPI := newMockStorageMinerAPI()
 
 	// Get the number of sectors allowed in a partition for this proof type
-	sectorsPerPartition, err := builtin2.PoStProofWindowPoStPartitionSectors(proofType)
+	sectorsPerPartition, err := builtin2.PoStProofWindowPoStPartitionSectors(proofType, network.Version1)
 	require.NoError(t, err)
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit

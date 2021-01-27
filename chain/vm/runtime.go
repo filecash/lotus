@@ -149,7 +149,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 			//log.Desugar().WithOptions(zap.AddStacktrace(zapcore.ErrorLevel)).
 			//Sugar().Errorf("spec actors failure: %s", r)
 			log.Errorf("spec actors failure: %s", r)
-			if rt.NetworkVersion() <= network.Version3 {
+			if rt.NetworkVersion() <= network.Version4 {
 				aerr = aerrors.Newf(1, "spec actors failure: %s", r)
 			} else {
 				aerr = aerrors.Newf(exitcode.SysErrReserved1, "spec actors failure: %s", r)
@@ -246,7 +246,7 @@ func (rt *Runtime) NewActorAddress() address.Address {
 }
 
 func (rt *Runtime) CreateActor(codeID cid.Cid, addr address.Address) {
-	if addr == address.Undef && rt.NetworkVersion() >= network.Version7 {
+	if addr == address.Undef && rt.NetworkVersion() >= network.Version8 {
 		rt.Abortf(exitcode.SysErrorIllegalArgument, "CreateActor with Undef address")
 	}
 	act, aerr := rt.vm.areg.Create(codeID, rt)
@@ -284,7 +284,7 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 	if !act.Balance.IsZero() {
 		// TODO: Should be safe to drop the version-check,
 		//  since only the paych actor called this pre-version 7, but let's leave it for now
-		if rt.NetworkVersion() >= network.Version7 {
+		if rt.NetworkVersion() >= network.Version8 {
 			beneficiaryId, found := rt.ResolveAddress(beneficiary)
 			if !found {
 				rt.Abortf(exitcode.SysErrorIllegalArgument, "beneficiary doesn't exist")

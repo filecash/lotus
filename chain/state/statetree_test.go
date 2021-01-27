@@ -335,7 +335,7 @@ func assertNotHas(t *testing.T, st *StateTree, addr address.Address) {
 func TestStateTreeConsistency(t *testing.T) {
 	cst := cbor.NewMemCborStore()
 	// TODO: ActorUpgrade: this test tests pre actors v2
-	st, err := NewStateTree(cst, VersionForNetwork(network.Version3))
+	st, err := NewStateTree(cst, VersionForNetwork(network.Version4))
 	if err != nil {
 		t.Fatal(err)
 	}

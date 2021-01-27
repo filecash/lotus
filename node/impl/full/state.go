@@ -146,7 +146,7 @@ func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address,
 	if err != nil {
 		return miner.MinerInfo{}, err
 	}
-	if m.StateManager.GetNtwkVersion(ctx, ts.Height()) >= network.Version7 && info.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+	if m.StateManager.GetNtwkVersion(ctx, ts.Height()) >= network.Version8 && info.SealProofType < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
 		info.SealProofType += abi.RegisteredSealProof_StackedDrg2KiBV1_1
 	}
 	return info, nil

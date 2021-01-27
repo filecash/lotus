@@ -28,7 +28,8 @@ const UpgradeSmokeHeight = 72070
 
 const UpgradeIgnitionHeight = 118150
 const UpgradeRefuelHeight = 132550
-const AmplifierHeight = 172870
+const UpgradeAmplifierHeight = 172870
+const UpgradeHogwartsHeight = 276550
 
 var UpgradeActorsV2Height = abi.ChainEpoch(10_000_001)
 
@@ -46,7 +47,7 @@ const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
 func init() {
 	miner0.UpgradeRcHeight = UpgradeBreezeHeight + RcPos
-	miner0.InitialPleFactorHeight = AmplifierHeight
+	miner0.InitialPleFactorHeight = UpgradeAmplifierHeight
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(20 << 30))
 	policy.SetSupportedProofTypes(
 		abi.RegisteredSealProof_StackedDrg16GiBV1,

@@ -170,7 +170,7 @@ func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwra
 	}
 
 	var provingSectors bitfield.BitField
-	if nv < network.Version7 {
+	if nv < network.Version8 {
 		allSectors, err := miner.AllPartSectors(mas, miner.Partition.AllSectors)
 		if err != nil {
 			return nil, xerrors.Errorf("get all sectors: %w", err)
@@ -254,6 +254,25 @@ func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwra
 	}
 
 	return out, nil
+}
+
+func StateMinerInfo(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (*miner.MinerInfo, error) {
+	act, err := sm.LoadActor(ctx, maddr, ts)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
+	}
+
+	mas, err := miner.Load(sm.cs.Store(ctx), act)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load miner actor state: %w", err)
+	}
+
+	mi, err := mas.Info()
+	if err != nil {
+		return nil, err
+	}
+
+	return &mi, err
 }
 
 func GetMinerSlashed(ctx context.Context, sm *StateManager, ts *types.TipSet, maddr address.Address) (bool, error) {
@@ -647,7 +666,7 @@ func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Add
 	hmp, err := minerHasMinPower(ctx, sm, addr, lookbackTs)
 
 	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
-	if sm.GetNtwkVersion(ctx, baseTs.Height()) <= network.Version3 {
+	if sm.GetNtwkVersion(ctx, baseTs.Height()) <= network.Version4 {
 		return hmp, err
 	}
 

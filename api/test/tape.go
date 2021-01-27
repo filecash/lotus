@@ -32,7 +32,7 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 	}}
 	if after {
 		upgradeSchedule = append(upgradeSchedule, stmgr.Upgrade{
-			Network: network.Version5,
+			Network: network.Version6,
 			Height:  2,
 		})
 	}

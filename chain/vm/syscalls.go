@@ -207,7 +207,7 @@ func (ss *syscallShim) VerifyBlockSig(blk *types.BlockHeader) error {
 }
 
 func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Address, error) {
-	if ss.networkVersion >= network.Version7 && height < ss.epoch-policy.ChainFinality {
+	if ss.networkVersion >= network.Version8 && height < ss.epoch-policy.ChainFinality {
 		return address.Undef, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", ss.epoch, height)
 	}
 

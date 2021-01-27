@@ -33,7 +33,7 @@ func AllPartSectors(mas State, sget func(Partition) (bitfield.BitField, error)) 
 // new miner actors and new sectors
 func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.RegisteredSealProof, error) {
 	switch {
-	case nv < network.Version7:
+	case nv < network.Version8:
 		switch ssize {
 		case 2 << 10:
 			return abi.RegisteredSealProof_StackedDrg2KiBV1, nil
@@ -52,7 +52,7 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.
 		default:
 			return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
 		}
-	case nv >= network.Version7:
+	case nv >= network.Version8:
 		switch ssize {
 		case 2 << 10:
 			return abi.RegisteredSealProof_StackedDrg2KiBV1_1, nil

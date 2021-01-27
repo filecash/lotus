@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -58,9 +59,9 @@ func TestAssumptions(t *testing.T) {
 
 func TestPartitionSizes(t *testing.T) {
 	for _, p := range abi.SealProofInfos {
-		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
+		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof, network.Version1)
 		require.NoError(t, err)
-		sizeOld, err := builtin0.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
+		sizeOld, err := builtin0.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof, network.Version1)
 		if err != nil {
 			// new proof type.
 			continue

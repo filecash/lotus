@@ -76,11 +76,11 @@ func TestSDRUpgrade(t *testing.T, b APIBuilder, blocktime time.Duration) {
 				assert.NoError(t, err)
 				switch round {
 				case 1:
-					assert.Equal(t, network.Version6, ver)
-				case 2:
 					assert.Equal(t, network.Version7, ver)
-				case 3:
+				case 2:
 					assert.Equal(t, network.Version8, ver)
+				case 3:
+					assert.Equal(t, network.Version9, ver)
 				}
 			}
 

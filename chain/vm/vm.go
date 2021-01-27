@@ -141,7 +141,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 
 	if parent != nil {
 		// TODO: The version check here should be unnecessary, but we can wait to take it out
-		if !parent.allowInternal && rt.NetworkVersion() >= network.Version7 {
+		if !parent.allowInternal && rt.NetworkVersion() >= network.Version8 {
 			rt.Abortf(exitcode.SysErrForbidden, "internal calls currently disabled")
 		}
 		rt.gasUsed = parent.gasUsed
@@ -151,7 +151,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		rt.depth = parent.depth + 1
 	}
 
-	if rt.depth > MaxCallDepth && rt.NetworkVersion() >= network.Version6 {
+	if rt.depth > MaxCallDepth && rt.NetworkVersion() >= network.Version7 {
 		rt.Abortf(exitcode.SysErrForbidden, "message execution exceeds call depth")
 	}
 
@@ -167,7 +167,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 	}
 	vmm.From = resF
 
-	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version4 {
 		rt.Message = &vmm
 	} else {
 		resT, _ := rt.ResolveAddress(msg.To)
@@ -304,7 +304,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version4 {
 					// Leave the rt.Message as is
 				} else {
 					nmsg := Message{
