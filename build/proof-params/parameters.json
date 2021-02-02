@@ -58,5 +58,35 @@
     "cid": "QmV8H8yJD1B9dTvYs2PYBJ3xs6QwsJ1a3g5qBKDVUe9wmj",
     "digest": "807efe0ce714ffc4fdc30ce7c8d4959f",
     "sector_size": 2048
+  },
+  "v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-4-0-14020a794b2c2191f4e7462ed8cb9b86f2a2d719b1d13e6581d80ad981e6b098.params": {
+    "cid": "QmeQoWydjK7YBABNaLsQieVetcXBPP86GQCboHbnNrVC7N",
+    "digest": "c798b8ac8f1e8c2caf3fca49b7cb9688",
+    "sector_size": 17179869184
+  },
+  "v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-4-0-14020a794b2c2191f4e7462ed8cb9b86f2a2d719b1d13e6581d80ad981e6b098.vk": {
+    "cid": "QmeMEntrC1pHHzD9KwXT7z433Nt2EixuhvnpdUF38WULgT",
+    "digest": "3f7b0860ee8a4edb8977f949cddcd7bc",
+    "sector_size": 17179869184
+  },
+  "v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-4-0-a01cdbef817cac42c9566e38490f0b4d299e2752af52a78b2a9d38b24286d5b4.params": {
+    "cid": "QmZSfBBrDhKyo8gjPN83vgzNvTNsnFkW82EDTq957eT2TW",
+    "digest": "165f1d19edd3e0c8fca1419c8b81bec6",
+    "sector_size": 17179869184
+  },
+  "v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-4-0-a01cdbef817cac42c9566e38490f0b4d299e2752af52a78b2a9d38b24286d5b4.vk": {
+    "cid": "QmYuAfcN4VSAJ9ocuqRYkq2wWsGWoZQczeJBejzQEkU1Vi",
+    "digest": "568664f4b5d84fbef271156bbb85abe9",
+    "sector_size": 17179869184
+  },
+  "v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-4-0-sha256_hasher-07c0adb3191b18918d631375516125e2900a1c437745539389cf154ec430c1c2.params": {
+    "cid": "QmaWpJxJ7YcEN3VqG94YwBna3PLAgknbRS9eAoLGTwpHZM",
+    "digest": "13426081829d62b5eeb3b9837ac12f13",
+    "sector_size": 17179869184
+  },
+  "v28-stacked-proof-of-replication-merkletree-poseidon_hasher-8-4-0-sha256_hasher-07c0adb3191b18918d631375516125e2900a1c437745539389cf154ec430c1c2.vk": {
+    "cid": "QmUjqsiQaZziKxgR86JA7Q1imuHpqbuRjMmq6k5vbv5WDu",
+    "digest": "0e6f27b87a184449e7fc50f97f17fb49",
+    "sector_size": 17179869184
   }
 }
