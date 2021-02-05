@@ -124,6 +124,10 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
 	return sm.Miner.PledgeSector()
 }
 
+func (sm *StorageMinerAPI) PledgeSectorToWorker(ctx context.Context, ID uint64) error {
+	return sm.Miner.PledgeSectorToWorker(ID)
+}
+
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
 	info, err := sm.Miner.GetSectorInfo(sid)
 	if err != nil {
@@ -528,6 +532,14 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 
 func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error {
 	return backup(sm.DS, fpath)
+}
+
+func (sm *StorageMinerAPI) AddWorkerTask(ctx context.Context, ID uint64) error {
+	return sm.StorageMgr.AddWorkerTask(ctx, ID)
+}
+
+func (sm *StorageMinerAPI) GetWorkerWait(ctx context.Context, ID uint64) int {
+	return sm.StorageMgr.GetWorkerWait(ctx, ID)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

@@ -53,4 +53,13 @@ type WorkerAPI interface {
 	SetWorkerParams(ctx context.Context, key string, val string) error
 
 	GetWorkerGroup(ctx context.Context) string
+
+	GetTaskCount(ctx context.Context) int32
+
+	SetID(ctx context.Context, ID uint64) error
+
+	GetID(ctx context.Context) uint64
+
+	AddWorkerTask(ctx context.Context, ID uint64) error
+        GetWorkerWait(ctx context.Context, ID uint64) int
 }

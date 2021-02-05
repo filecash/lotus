@@ -13,10 +13,13 @@ import (
 
 type taskSelector struct {
 	best []stores.StorageInfo //nolint: unused, structcheck
+	task sealtasks.TaskType
 }
 
-func newTaskSelector() *taskSelector {
-	return &taskSelector{}
+func newTaskSelector(task sealtasks.TaskType) *taskSelector {
+	return &taskSelector{
+		task: task,
+	}
 }
 
 func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
@@ -32,12 +35,21 @@ func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 func (s *taskSelector) Cmp(ctx context.Context, _ sealtasks.TaskType, a, b *workerHandle) (bool, error) {
 	atasks, err := a.w.TaskTypes(ctx)
 	if err != nil {
-		return false, xerrors.Errorf("getting supported worker task types: %w", err)
+		return true, xerrors.Errorf("getting supported worker task types: %w", err)
 	}
 	btasks, err := b.w.TaskTypes(ctx)
 	if err != nil {
-		return false, xerrors.Errorf("getting supported worker task types: %w", err)
+		return true, xerrors.Errorf("getting supported worker task types: %w", err)
 	}
+	v, ok := a.reqTask[s.task]
+        if ok && v > 0 {
+                return true, nil
+        }
+        v, ok = b.reqTask[s.task]
+        if ok && v > 0 {
+                return false, nil
+        }
+
 	if len(atasks) != len(btasks) {
 		return len(atasks) < len(btasks), nil // prefer workers which can do less
 	}

@@ -32,6 +32,8 @@ type StorageMiner interface {
 	// Temp api for testing
 	PledgeSector(context.Context) error
 
+	PledgeSectorToWorker(context.Context, uint64) error
+
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
 
@@ -110,6 +112,9 @@ type StorageMiner interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error
+
+	AddWorkerTask(ctx context.Context, ID uint64) error
+	GetWorkerWait(ctx context.Context, ID uint64) int
 }
 
 type SealRes struct {

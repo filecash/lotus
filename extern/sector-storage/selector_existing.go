@@ -16,14 +16,16 @@ type existingSelector struct {
 	sector     abi.SectorID
 	alloc      stores.SectorFileType
 	allowFetch bool
+	task       sealtasks.TaskType
 }
 
-func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool) *existingSelector {
+func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc stores.SectorFileType, allowFetch bool, task sealtasks.TaskType) *existingSelector {
 	return &existingSelector{
 		index:      index,
 		sector:     sector,
 		alloc:      alloc,
 		allowFetch: allowFetch,
+		task:       task,
 	}
 }
 
@@ -61,6 +63,15 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 }
 
 func (s *existingSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+	v, ok := a.reqTask[s.task]
+        if ok && v > 0 {
+                return true, nil
+        }
+        v, ok = b.reqTask[s.task]
+        if ok && v > 0 {
+                return false, nil
+        }
+
 	return a.utilization() < b.utilization(), nil
 }
 

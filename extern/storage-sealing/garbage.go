@@ -81,3 +81,13 @@ func (m *Sealing) PledgeSector() error {
 	}()
 	return nil
 }
+
+func (m *Sealing) PledgeSectorToWorker(ID uint64) error {
+	ctx := context.TODO()
+	err := m.sealer.AddWorkerTask(ctx, ID)
+	if err != nil {
+		return err
+	}
+	m.PledgeSector()
+	return nil
+}

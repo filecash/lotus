@@ -602,6 +602,15 @@ func (sb *Sealer) Remove(ctx context.Context, sector abi.SectorID) error {
 	return xerrors.Errorf("not supported at this layer") // happens in localworker
 }
 
+func (sb *Sealer) AddWorkerTask(ctx context.Context, ID uint64) error {
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer)GetWorkerWait(ctx context.Context, ID uint64) int {
+	return -1
+}
+
+
 func GeneratePieceCIDFromFile(proofType abi.RegisteredSealProof, piece io.Reader, pieceSize abi.UnpaddedPieceSize) (cid.Cid, error) {
 	f, werr, err := ToReadableFile(piece, int64(pieceSize))
 	if err != nil {

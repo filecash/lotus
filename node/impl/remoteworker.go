@@ -75,4 +75,24 @@ func (r *remoteWorker) GetWorkerGroup(ctx context.Context) string {
 	return r.WorkerAPI.GetWorkerGroup(ctx)
 }
 
+func (r *remoteWorker) GetTaskCount(ctx context.Context) int32 {
+        return r.WorkerAPI.GetTaskCount(ctx)
+}
+
+func (r *remoteWorker) SetID(ctx context.Context, ID uint64) error {
+	return r.WorkerAPI.SetID(ctx, ID)
+}
+
+func (r *remoteWorker) GetID(ctx context.Context) uint64 {
+	return r.WorkerAPI.GetID(ctx)
+}
+
+func (r *remoteWorker) AddWorkerTask(ctx context.Context, ID uint64) error {
+	return r.WorkerAPI.AddWorkerTask(ctx, ID)
+}
+
+func (r *remoteWorker) GetWorkerWait(ctx context.Context, ID uint64) int {
+        return r.WorkerAPI.GetWorkerWait(ctx, ID)
+}
+
 var _ sectorstorage.Worker = &remoteWorker{}
