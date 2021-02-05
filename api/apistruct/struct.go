@@ -309,7 +309,8 @@ type StorageMinerStruct struct {
 		MarketRestartDataTransfer func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                     `perm:"read"`
 		MarketCancelDataTransfer  func(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error                                                                     `perm:"read"`
 
-		PledgeSector func(context.Context) error `perm:"write"`
+		PledgeSector         func(context.Context) error            `perm:"write"`
+		PledgeSectorToWorker func(context.Context, uuid.UUID) error `perm:"write"`
 
 		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
 		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
@@ -381,6 +382,8 @@ type StorageMinerStruct struct {
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 
 		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		AddWorkerTask func(ctx context.Context, ID uuid.UUID) error                                                                                           `perm:"read"`
+		GetWorkerWait func(ctx context.Context, ID uuid.UUID) int                                                                                             `perm:"admin"`
 	}
 }
 
@@ -434,6 +437,11 @@ type WorkerStruct struct {
 		WalletChangePasswd func(context.Context, string) (bool, error)
 		WalletClearPasswd  func(context.Context) (bool, error)
 		DeleteKey2         func(address.Address)
+		GetTaskCount    func(ctx context.Context) int32                                               `perm:"admin"`
+		SetID           func(ctx context.Context, ID uuid.UUID) error                                 `perm:"admin"`
+		GetID           func(ctx context.Context) uuid.UUID                                           `perm:"admin"`
+		AddWorkerTask   func(ctx context.Context, ID uuid.UUID) error                                 `perm:"read"`
+		GetWorkerWait   func(ctx context.Context, ID uuid.UUID) int                                   `perm:"read"`
 	}
 }
 
@@ -1302,6 +1310,10 @@ func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
 	return c.Internal.PledgeSector(ctx)
 }
 
+func (c *StorageMinerStruct) PledgeSectorToWorker(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.PledgeSectorToWorker(ctx, ID)
+}
+
 // Get the status of a given sector by ID
 func (c *StorageMinerStruct) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
 	return c.Internal.SectorsStatus(ctx, sid, showOnChainInfo)
@@ -1594,6 +1606,13 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
 }
+func (c *StorageMinerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.AddWorkerTask(ctx, ID)
+}
+
+func (c *StorageMinerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return c.Internal.GetWorkerWait(ctx, ID)
+}
 
 // WorkerStruct
 
@@ -1882,6 +1901,26 @@ func (c *WorkerStruct) SetWorkerParams(ctx context.Context, key string, val stri
 
 func (c *WorkerStruct) GetWorkerGroup(ctx context.Context) string {
 	return c.Internal.GetWorkerGroup(ctx)
+}
+
+func (c *WorkerStruct) GetTaskCount(ctx context.Context) int32 {
+	return c.Internal.GetTaskCount(ctx)
+}
+
+func (c *WorkerStruct) SetID(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.SetID(ctx, ID)
+}
+
+func (c *WorkerStruct) GetID(ctx context.Context) uuid.UUID {
+	return c.Internal.GetID(ctx)
+}
+
+func (c *WorkerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return c.Internal.AddWorkerTask(ctx, ID)
+}
+
+func (c *WorkerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return c.Internal.GetWorkerWait(ctx, ID)
 }
 
 var _ api.Common = &CommonStruct{}

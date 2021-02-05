@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -87,6 +88,7 @@ type workerHandle struct {
 
 	preparing *activeResources
 	active    *activeResources
+	reqTask   map[sealtasks.TaskType]uint
 
 	lk sync.Mutex
 
@@ -99,6 +101,7 @@ type workerHandle struct {
 	cleanupStarted bool
 	closedMgr      chan struct{}
 	closingMgr     chan struct{}
+	ctx            context.Context
 }
 
 type schedWindowRequest struct {
@@ -448,6 +451,12 @@ func (sh *scheduler) trySched() {
 				wii := sh.openWindows[acceptableWindows[sqi][i]].worker // nolint:scopelint
 				wji := sh.openWindows[acceptableWindows[sqi][j]].worker // nolint:scopelint
 
+				fmt.Println(acceptableWindows[sqi])
+				fmt.Printf("acceptableWindows[sqi][i]: %d\n", acceptableWindows[sqi][i])
+				fmt.Printf("acceptableWindows[sqi][j]: %d\n", acceptableWindows[sqi][j])
+				fmt.Printf("wii: %s\n", wii.String())
+				fmt.Printf("wji: %s\n", wji.String())
+
 				if wii == wji {
 					// for the same worker prefer older windows
 					return acceptableWindows[sqi][i] < acceptableWindows[sqi][j] // nolint:scopelint
@@ -563,6 +572,7 @@ func (sh *scheduler) trySched() {
 		window := window // copy
 		select {
 		case sh.openWindows[wnd].done <- &window:
+			fmt.Printf("run task worker id: %s\n", sh.openWindows[wnd].worker.String())
 		default:
 			log.Error("expected sh.openWindows[wnd].done to be buffered")
 		}
@@ -615,4 +625,40 @@ func (sh *scheduler) Close(ctx context.Context) error {
 		return ctx.Err()
 	}
 	return nil
+}
+
+func (w *workerHandle) AddTask(ctx context.Context) error {
+	tasks, err := w.workerRpc.TaskTypes(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting supported worker task types: %w", err)
+	}
+	w.lk.Lock()
+	for k, _ := range tasks {
+		if k != sealtasks.TTAddPiece && k != sealtasks.TTPreCommit1 && k != sealtasks.TTPreCommit2 &&
+			k != sealtasks.TTCommit1 && k != sealtasks.TTCommit2 {
+			fmt.Print("continue ")
+			fmt.Println(k)
+			continue
+		}
+		_, ok := w.reqTask[k]
+		if ok {
+			w.reqTask[k] += 1
+		} else {
+			w.reqTask[k] = 1
+		}
+		fmt.Print("add ")
+		fmt.Println(k)
+	}
+	w.lk.Unlock()
+	return nil
+}
+
+func (w *workerHandle) GetWorkerWait() int {
+	var c int = 0
+	w.lk.Lock()
+	for _, v := range w.reqTask {
+		c += int(v)
+	}
+	w.lk.Unlock()
+	return c
 }

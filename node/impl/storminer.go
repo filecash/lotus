@@ -126,6 +126,10 @@ func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
 	return sm.Miner.PledgeSector()
 }
 
+func (sm *StorageMinerAPI) PledgeSectorToWorker(ctx context.Context, ID uuid.UUID) error {
+	return sm.Miner.PledgeSectorToWorker(ID)
+}
+
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
 	info, err := sm.Miner.GetSectorInfo(sid)
 	if err != nil {
@@ -579,6 +583,14 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 	}
 
 	return out, nil
+}
+
+func (sm *StorageMinerAPI) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return sm.StorageMgr.AddWorkerTask(ctx, ID)
+}
+
+func (sm *StorageMinerAPI) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return sm.StorageMgr.GetWorkerWait(ctx, ID)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

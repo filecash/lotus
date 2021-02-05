@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -48,6 +49,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 
 		closingMgr: make(chan struct{}),
 		closedMgr:  make(chan struct{}),
+		reqTask:    make(map[sealtasks.TaskType]uint),
 	}
 
 	wid := WorkerID(sessID)
@@ -466,6 +468,15 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			sh.execSectorWorker.lk.Lock()
 			delete(sh.execSectorWorker.group, req.sector.ID)
 			sh.execSectorWorker.lk.Unlock()
+		}
+
+		v, ok := w.reqTask[req.taskType]
+		if ok {
+			fmt.Print("remove ")
+			fmt.Println(req.taskType)
+			if v > 0 {
+				w.reqTask[req.taskType] -= 1
+			}
 		}
 
 		sh.workersLk.Unlock()
