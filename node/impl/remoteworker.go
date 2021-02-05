@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/google/uuid"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -73,6 +74,26 @@ func (r *remoteWorker) SetWorkerParams(ctx context.Context, key string, val stri
 
 func (r *remoteWorker) GetWorkerGroup(ctx context.Context) string {
 	return r.WorkerAPI.GetWorkerGroup(ctx)
+}
+
+func (r *remoteWorker) GetTaskCount(ctx context.Context) int32 {
+	return r.WorkerAPI.GetTaskCount(ctx)
+}
+
+func (r *remoteWorker) SetID(ctx context.Context, ID uuid.UUID) error {
+	return r.WorkerAPI.SetID(ctx, ID)
+}
+
+func (r *remoteWorker) GetID(ctx context.Context) uuid.UUID {
+	return r.WorkerAPI.GetID(ctx)
+}
+
+func (r *remoteWorker) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return r.WorkerAPI.AddWorkerTask(ctx, ID)
+}
+
+func (r *remoteWorker) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return r.WorkerAPI.GetWorkerWait(ctx, ID)
 }
 
 var _ sectorstorage.Worker = &remoteWorker{}

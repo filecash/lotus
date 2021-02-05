@@ -19,6 +19,9 @@ const UpgradeIgnitionHeight = -2
 const UpgradeRefuelHeight = -3
 const UpgradeTapeHeight = -4
 
+const UpgradeHogwartsHeight = -5
+const UpgradeSiriusHeight = -6
+
 var UpgradeActorsV2Height = abi.ChainEpoch(10)
 var UpgradeLiftoffHeight = abi.ChainEpoch(-5)
 

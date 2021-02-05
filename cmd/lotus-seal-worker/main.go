@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,6 +57,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		autoTaskCmd,
 		infoCmd,
 		storageCmd,
 		setCmd,
@@ -97,6 +100,104 @@ func main() {
 		log.Warnf("%+v", err)
 		return
 	}
+}
+
+var autoTaskCmd = &cli.Command{
+	Name:  "autoTask",
+	Usage: "Start auto task worker",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "count",
+			Usage: "auto task run count",
+			Value: 1,
+		},
+		&cli.Int64Flag{
+			Name:  "delay",
+			Usage: "auto task delay",
+			Value: 10,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		log.Info("Starting auto task worker")
+
+		api, closer, err := lcli.GetWorkerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		mapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		ver, err := api.Version(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting version: %w", err)
+		}
+
+		fmt.Println("Worker version: ", ver)
+		fmt.Print("CLI version: ")
+		cli.VersionPrinter(cctx)
+		fmt.Println()
+
+		count := cctx.Int("count")
+		delay := cctx.Int("delay")
+		sigs := make(chan os.Signal, 1)
+
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			<-sigs
+			os.Exit(0)
+		}()
+
+		for {
+			taskCount := api.GetTaskCount(ctx)
+			wid := api.GetID(ctx)
+			waitTask := mapi.GetWorkerWait(ctx, wid)
+			fmt.Printf("Task Count: %d\n", taskCount)
+			fmt.Printf("wid: %s\n", wid.String())
+			fmt.Printf("Task Wait: %d\n", waitTask)
+			fmt.Println()
+			if taskCount+int32(waitTask) == 0 {
+				for i := 0; i < count; i++ {
+					err = mapi.PledgeSectorToWorker(ctx, wid)
+					if err != nil {
+						return xerrors.Errorf("pledge sector to worker: %w", err)
+					}
+				}
+			}
+			list, err := mapi.SectorsList(ctx)
+			if err != nil {
+				return err
+			}
+			isProving := true
+			for _, s := range list {
+				st, err := mapi.SectorsStatus(ctx, s, true)
+				if err != nil {
+					return err
+				}
+				if st.State != "Proving" {
+					isProving = false
+				}
+			}
+			if isProving {
+				for i := 0; i < count; i++ {
+					err = mapi.PledgeSector(ctx)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			time.Sleep(time.Duration(delay) * time.Second)
+		}
+
+		return nil
+	},
 }
 
 var runCmd = &cli.Command{

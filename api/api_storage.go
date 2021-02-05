@@ -36,6 +36,8 @@ type StorageMiner interface {
 	// Temp api for testing
 	PledgeSector(context.Context) error
 
+	PledgeSectorToWorker(context.Context, uuid.UUID) error
+
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error)
 
@@ -122,6 +124,8 @@ type StorageMiner interface {
 	CreateBackup(ctx context.Context, fpath string) error
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error)
+	AddWorkerTask(ctx context.Context, ID uuid.UUID) error
+	GetWorkerWait(ctx context.Context, ID uuid.UUID) int
 }
 
 type SealRes struct {
