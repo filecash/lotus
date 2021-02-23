@@ -31,6 +31,7 @@ const UpgradeIgnitionHeight = 118150
 const UpgradeRefuelHeight = 132550
 const UpgradeAmplifierHeight = 172870
 const UpgradeHogwartsHeight = 276550
+const UpgradeSiriusHeight = 
 
 var UpgradeActorsV2Height = abi.ChainEpoch(10_000_001)
 
