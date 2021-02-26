@@ -115,7 +115,6 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 		acceptTasks: acceptTasks,
 		executor:    executor,
 		taskCount:   0,
-		ID:          uuid.UUID{},
 		noSwap:      wcfg.NoSwap,
 
 		session: uuid.New(),
@@ -129,6 +128,8 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 			list: make(map[abi.SectorID]string),
 		},
 	}
+
+	w.ID = w.session
 
 	if w.executor == nil {
 		w.executor = w.ffiExec
@@ -820,7 +821,6 @@ func (l *LocalWorker) GetTaskCount(ctx context.Context) int32 {
 func (l *LocalWorker) SetID(ctx context.Context, ID uuid.UUID) error {
 	l.lkID.Lock()
 	defer l.lkID.Unlock()
-	l.ID = ID
 	copy(l.ID[:], ID[:])
 	return nil
 }

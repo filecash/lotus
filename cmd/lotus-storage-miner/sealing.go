@@ -29,7 +29,6 @@ var sealingCmd = &cli.Command{
 		sealingWorkersCmd,
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
-
 		setWorkerParamsCmd,
 	},
 }

@@ -109,7 +109,7 @@ func (m *Manager) GetWorker(ctx context.Context) map[string]WorkerInfo {
 	return out
 }
 
-func (m *Manager) SetWorkerParam(ctx context.Context, worker, key string, value string) error {
+func (m *Manager) SetWorkerParam(ctx context.Context, worker, key, value string) error {
 	m.sched.workersLk.Lock()
 	defer m.sched.workersLk.Unlock()
 

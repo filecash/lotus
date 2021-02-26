@@ -454,8 +454,8 @@ func (sh *scheduler) trySched() {
 				fmt.Println(acceptableWindows[sqi])
 				fmt.Printf("acceptableWindows[sqi][i]: %d\n", acceptableWindows[sqi][i])
 				fmt.Printf("acceptableWindows[sqi][j]: %d\n", acceptableWindows[sqi][j])
-				fmt.Printf("wii: %d\n", wii)
-				fmt.Printf("wji: %d\n", wji)
+				fmt.Printf("wii: %s\n", wii.String())
+				fmt.Printf("wji: %s\n", wji.String())
 
 				if wii == wji {
 					// for the same worker prefer older windows
@@ -572,7 +572,7 @@ func (sh *scheduler) trySched() {
 		window := window // copy
 		select {
 		case sh.openWindows[wnd].done <- &window:
-			fmt.Printf("run task worker id: %d\n", sh.openWindows[wnd].worker)
+			fmt.Printf("run task worker id: %s\n", sh.openWindows[wnd].worker.String())
 		default:
 			log.Error("expected sh.openWindows[wnd].done to be buffered")
 		}
@@ -634,7 +634,8 @@ func (w *workerHandle) AddTask(ctx context.Context) error {
 	}
 	w.lk.Lock()
 	for k, _ := range tasks {
-		if k != sealtasks.TTAddPiece && k != sealtasks.TTPreCommit1 && k != sealtasks.TTPreCommit2 && k != sealtasks.TTCommit1 && k != sealtasks.TTCommit2 {
+		if k != sealtasks.TTAddPiece && k != sealtasks.TTPreCommit1 && k != sealtasks.TTPreCommit2 &&
+			k != sealtasks.TTCommit1 && k != sealtasks.TTCommit2 {
 			fmt.Print("continue ")
 			fmt.Println(k)
 			continue

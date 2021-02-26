@@ -160,7 +160,7 @@ var autoTaskCmd = &cli.Command{
 			wid := api.GetID(ctx)
 			waitTask := mapi.GetWorkerWait(ctx, wid)
 			fmt.Printf("Task Count: %d\n", taskCount)
-			fmt.Printf("wid: %d\n", wid)
+			fmt.Printf("wid: %s\n", wid.String())
 			fmt.Printf("Task Wait: %d\n", waitTask)
 			fmt.Println()
 			if taskCount+int32(waitTask) == 0 {

@@ -763,7 +763,7 @@ func (m *Manager) Close(ctx context.Context) error {
 func (m *Manager) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
 	w := m.sched.workers[WorkerID(ID)]
 	if w == nil {
-		return xerrors.Errorf("Worker ID is not found")
+		return xerrors.Errorf("Worker ID is not found,id:%s", ID.String())
 	}
 	return w.AddTask(ctx)
 }
