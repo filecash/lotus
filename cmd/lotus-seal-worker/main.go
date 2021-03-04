@@ -103,7 +103,7 @@ func main() {
 }
 
 var autoTaskCmd = &cli.Command{
-	Name:  "autoTask",
+	Name:  "autotask",
 	Usage: "Start auto task worker",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
