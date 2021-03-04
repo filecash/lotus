@@ -431,12 +431,12 @@ type WorkerStruct struct {
 		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
 
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
-		WalletLock         func(context.Context) error
-		WalletUnlock       func(context.Context, string) error
-		WalletIsLock       func(context.Context) (bool, error)
-		WalletChangePasswd func(context.Context, string) (bool, error)
-		WalletClearPasswd  func(context.Context) (bool, error)
-		DeleteKey2         func(address.Address)
+		WalletLock         func(context.Context) error  `perm:"admin"`
+		WalletUnlock       func(context.Context, string) error   `perm:"admin"`
+		WalletIsLock       func(context.Context) (bool, error)  `perm:"admin"`
+		WalletChangePasswd func(context.Context, string) (bool, error) `perm:"admin"`
+		WalletClearPasswd  func(context.Context) (bool, error)  `perm:"admin"`
+		DeleteKey2         func(address.Address)  `perm:"admin"`
 		GetTaskCount    func(ctx context.Context) int32                                               `perm:"admin"`
 		SetID           func(ctx context.Context, ID uuid.UUID) error                                 `perm:"admin"`
 		GetID           func(ctx context.Context) uuid.UUID                                           `perm:"admin"`
@@ -480,12 +480,12 @@ type GatewayStruct struct {
 type WalletStruct struct {
 	Internal struct {
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"sign"`
-		WalletLock         func(context.Context) error
-		WalletUnlock       func(context.Context, string) error
-		WalletIsLock       func(context.Context) (bool, error)
-		WalletChangePasswd func(context.Context, string) (bool, error)
-		WalletClearPasswd  func(context.Context) (bool, error)
-		DeleteKey2         func(address.Address) error
+		WalletLock         func(context.Context) error `perm:"sign"`
+		WalletUnlock       func(context.Context, string) error `perm:"sign"`
+		WalletIsLock       func(context.Context) (bool, error) `perm:"sign"`
+		WalletChangePasswd func(context.Context, string) (bool, error) `perm:"sign"`
+		WalletClearPasswd  func(context.Context) (bool, error) `perm:"sign"`
+		DeleteKey2         func(address.Address) error  `perm:"sign"`
 
 		WalletNew    func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
 		WalletHas    func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
