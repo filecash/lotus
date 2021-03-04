@@ -8,20 +8,16 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 
 	"github.com/google/uuid"
-	"github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	protocol "github.com/libp2p/go-libp2p-core/protocol"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -431,17 +427,17 @@ type WorkerStruct struct {
 		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
 
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
-		WalletLock         func(context.Context) error  `perm:"admin"`
-		WalletUnlock       func(context.Context, string) error   `perm:"admin"`
-		WalletIsLock       func(context.Context) (bool, error)  `perm:"admin"`
-		WalletChangePasswd func(context.Context, string) (bool, error) `perm:"admin"`
-		WalletClearPasswd  func(context.Context) (bool, error)  `perm:"admin"`
-		DeleteKey2         func(address.Address)  `perm:"admin"`
-		GetTaskCount    func(ctx context.Context) int32                                               `perm:"admin"`
-		SetID           func(ctx context.Context, ID uuid.UUID) error                                 `perm:"admin"`
-		GetID           func(ctx context.Context) uuid.UUID                                           `perm:"admin"`
-		AddWorkerTask   func(ctx context.Context, ID uuid.UUID) error                                 `perm:"read"`
-		GetWorkerWait   func(ctx context.Context, ID uuid.UUID) int                                   `perm:"read"`
+		WalletLock         func(context.Context) error                                                                  `perm:"admin"`
+		WalletUnlock       func(context.Context, string) error                                                          `perm:"admin"`
+		WalletIsLock       func(context.Context) (bool, error)                                                          `perm:"admin"`
+		WalletChangePasswd func(context.Context, string) (bool, error)                                                  `perm:"admin"`
+		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"admin"`
+		DeleteKey2         func(address.Address)                                                                        `perm:"admin"`
+		GetTaskCount       func(ctx context.Context) int32                                                              `perm:"admin"`
+		SetID              func(ctx context.Context, ID uuid.UUID) error                                                `perm:"admin"`
+		GetID              func(ctx context.Context) uuid.UUID                                                          `perm:"admin"`
+		AddWorkerTask      func(ctx context.Context, ID uuid.UUID) error                                                `perm:"read"`
+		GetWorkerWait      func(ctx context.Context, ID uuid.UUID) int                                                  `perm:"read"`
 	}
 }
 
@@ -480,12 +476,12 @@ type GatewayStruct struct {
 type WalletStruct struct {
 	Internal struct {
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"sign"`
-		WalletLock         func(context.Context) error `perm:"sign"`
-		WalletUnlock       func(context.Context, string) error `perm:"sign"`
-		WalletIsLock       func(context.Context) (bool, error) `perm:"sign"`
-		WalletChangePasswd func(context.Context, string) (bool, error) `perm:"sign"`
-		WalletClearPasswd  func(context.Context) (bool, error) `perm:"sign"`
-		DeleteKey2         func(address.Address) error  `perm:"sign"`
+		WalletLock         func(context.Context) error                                                                  `perm:"sign"`
+		WalletUnlock       func(context.Context, string) error                                                          `perm:"sign"`
+		WalletIsLock       func(context.Context) (bool, error)                                                          `perm:"sign"`
+		WalletChangePasswd func(context.Context, string) (bool, error)                                                  `perm:"sign"`
+		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"sign"`
+		DeleteKey2         func(address.Address) error                                                                  `perm:"sign"`
 
 		WalletNew    func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
 		WalletHas    func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
