@@ -70,6 +70,10 @@ type LocalWorker struct {
 	commitNow     int64
 	group         string
 	storeList     taskList
+
+	lkID      sync.Mutex
+	taskCount int32
+	ID        uuid.UUID
 }
 
 type taskList struct {
@@ -110,6 +114,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 		},
 		acceptTasks: acceptTasks,
 		executor:    executor,
+		taskCount:   0,
 		noSwap:      wcfg.NoSwap,
 
 		session: uuid.New(),
@@ -123,6 +128,8 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 			list: make(map[abi.SectorID]string),
 		},
 	}
+
+	w.ID = w.session
 
 	if w.executor == nil {
 		w.executor = w.ffiExec
@@ -350,12 +357,20 @@ func (l *LocalWorker) AddPiece(ctx context.Context, sector storage.SectorRef, ep
 	}
 
 	return l.asyncCall(ctx, sector, AddPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		return sb.AddPiece(ctx, sector, epcs, sz, r)
 	})
 }
 
 func (l *LocalWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, Fetch, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, storiface.FTNone, ptype)
 		if err == nil {
 			done()
@@ -383,7 +398,10 @@ func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storage.SectorR
 		if err != nil {
 			return nil, err
 		}
-
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		return sb.SealPreCommit1(ctx, sector, ticket, pieces)
 	})
 }
@@ -395,6 +413,11 @@ func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storage.SectorR
 	}
 
 	return l.asyncCall(ctx, sector, SealPreCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
+
 		return sb.SealPreCommit2(ctx, sector, phase1Out)
 	})
 }
@@ -406,6 +429,10 @@ func (l *LocalWorker) SealCommit1(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, SealCommit1, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		return sb.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 	})
 }
@@ -417,6 +444,10 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, SealCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		return sb.SealCommit2(ctx, sector, phase1Out)
 	})
 }
@@ -428,15 +459,19 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storage.SectorR
 	}
 
 	return l.asyncCall(ctx, sector, FinalizeSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
 			return nil, xerrors.Errorf("finalizing sector: %w", err)
 		}
 
-		if len(keepUnsealed) == 0 {
+		/*if len(keepUnsealed) == 0 {
 			if err := l.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true); err != nil {
 				return nil, xerrors.Errorf("removing unsealed data: %w", err)
 			}
-		}
+		}*/
 
 		return nil, err
 	})
@@ -448,7 +483,10 @@ func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storage.Sector
 
 func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	var err error
-
+	atomic.AddInt32(&l.taskCount, 1)
+	defer func() {
+		atomic.AddInt32(&l.taskCount, -1)
+	}()
 	if rerr := l.storage.Remove(ctx, sector, storiface.FTSealed, true); rerr != nil {
 		err = multierror.Append(err, xerrors.Errorf("removing sector (sealed): %w", rerr))
 	}
@@ -464,6 +502,10 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, MoveStorage, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		return nil, l.storage.MoveStorage(ctx, sector, types)
 	})
 }
@@ -475,6 +517,10 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, UnsealPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
 		if err = sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
 			return nil, xerrors.Errorf("unsealing sector: %w", err)
 		}
@@ -498,6 +544,11 @@ func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector st
 	}
 
 	return l.asyncCall(ctx, sector, ReadPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		atomic.AddInt32(&l.taskCount, 1)
+		defer func() {
+			atomic.AddInt32(&l.taskCount, -1)
+		}()
+
 		return sb.ReadPiece(ctx, writer, sector, index, size)
 	})
 }
@@ -761,4 +812,31 @@ func (l *LocalWorker) SetWorkerParams(ctx context.Context, key string, val strin
 
 func (l *LocalWorker) GetWorkerGroup(ctx context.Context) string {
 	return l.group
+}
+
+func (l *LocalWorker) GetTaskCount(ctx context.Context) int32 {
+	return atomic.LoadInt32(&l.taskCount)
+}
+
+func (l *LocalWorker) SetID(ctx context.Context, ID uuid.UUID) error {
+	l.lkID.Lock()
+	defer l.lkID.Unlock()
+	copy(l.ID[:], ID[:])
+	return nil
+}
+
+func (l *LocalWorker) GetID(ctx context.Context) uuid.UUID {
+	l.lkID.Lock()
+	defer l.lkID.Unlock()
+	var id uuid.UUID
+	copy(id[:], l.ID[:])
+	return id
+}
+
+func (l *LocalWorker) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (l *LocalWorker) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
+	return -1
 }
