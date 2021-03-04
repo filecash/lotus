@@ -612,7 +612,21 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
 	log.Warnw("ReleaseUnsealed todo")
-	return nil
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUnsealed); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	var err error
+
+	if rerr := m.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true); rerr != nil {
+		err = multierror.Append(err, xerrors.Errorf("removing sector (unsealed): %w", rerr))
+	}
+
+
+	return err
 }
 
 func (m *Manager) Remove(ctx context.Context, sector storage.SectorRef) error {
