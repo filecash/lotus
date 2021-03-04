@@ -430,7 +430,7 @@ type WorkerStruct struct {
 		SetWorkerParams func(ctx context.Context, key string, val string) error                       `perm:"admin"`
 		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
 
-		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error)
+		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
 		WalletLock         func(context.Context) error
 		WalletUnlock       func(context.Context, string) error
 		WalletIsLock       func(context.Context) (bool, error)
@@ -479,7 +479,7 @@ type GatewayStruct struct {
 
 type WalletStruct struct {
 	Internal struct {
-		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error)
+		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"sign"`
 		WalletLock         func(context.Context) error
 		WalletUnlock       func(context.Context, string) error
 		WalletIsLock       func(context.Context) (bool, error)
