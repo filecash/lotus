@@ -2,11 +2,15 @@ package apistruct
 
 import (
 	"context"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-multistore"
 	"io"
 	"time"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 
+	"github.com/ipfs/go-cid"
 	"github.com/google/uuid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
