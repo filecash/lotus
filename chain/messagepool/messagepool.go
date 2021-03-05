@@ -1351,3 +1351,29 @@ func getBaseFeeLowerBound(baseFee, factor types.BigInt) types.BigInt {
 
 	return baseFeeLowerBound
 }
+
+func (mp *MessagePool) ListLocal() ([]*types.SignedMessage, error) {
+	res, err := mp.localMsgs.Query(query.Query{})
+	if err != nil {
+		return nil, xerrors.Errorf("query local messages: %w", err)
+	}
+
+	msgs := make([]*types.SignedMessage, 0)
+
+	for r := range res.Next() {
+		if r.Error != nil {
+			return nil, xerrors.Errorf("r.Error: %w", r.Error)
+		}
+
+		var sm types.SignedMessage
+		if err := sm.UnmarshalCBOR(bytes.NewReader(r.Value)); err != nil {
+			return nil, xerrors.Errorf("unmarshaling local message: %w", err)
+		}
+
+		msgs = append(msgs, &sm)
+
+		mp.localAddrs[sm.Message.From] = struct{}{}
+	}
+
+	return msgs, nil
+}

@@ -10,8 +10,8 @@ import (
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 
-	"github.com/ipfs/go-cid"
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -133,11 +133,11 @@ type FullNodeStruct struct {
 		MpoolPush          func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 		MpoolPushUntrusted func(context.Context, *types.SignedMessage) (cid.Cid, error) `perm:"write"`
 
-		MpoolPushMessage  func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)         `perm:"sign"`
-		MpoolPushMessage2 func(context.Context, *types.Message, *api.MessageSendSpec, string) (*types.SignedMessage, error) `perm:"sign"`
-		MpoolGetNonce     func(context.Context, address.Address) (uint64, error)                                            `perm:"read"`
-		MpoolSub          func(context.Context) (<-chan api.MpoolUpdate, error)                                             `perm:"read"`
-
+		MpoolPushMessage        func(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)                   `perm:"sign"`
+		MpoolPushMessage2       func(context.Context, *types.Message, *api.MessageSendSpec, string) (*types.SignedMessage, error)           `perm:"sign"`
+		MpoolGetNonce           func(context.Context, address.Address) (uint64, error)                                                      `perm:"read"`
+		MpoolSub                func(context.Context) (<-chan api.MpoolUpdate, error)                                                       `perm:"read"`
+		MpoolListLocal          func(context.Context) ([]*types.SignedMessage, error)                                                       `perm:"read"`
 		MpoolBatchPush          func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
 		MpoolBatchPushUntrusted func(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error)                                  `perm:"write"`
 		MpoolBatchPushMessage   func(ctx context.Context, msgs []*types.Message, spec *api.MessageSendSpec) ([]*types.SignedMessage, error) `perm:"sign"`
@@ -754,6 +754,10 @@ func (c *FullNodeStruct) MpoolBatchPushMessage(ctx context.Context, msgs []*type
 
 func (c *FullNodeStruct) MpoolPushMessage2(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, passwd string) (*types.SignedMessage, error) {
 	return c.Internal.MpoolPushMessage2(ctx, msg, spec, passwd)
+}
+
+func (c *FullNodeStruct) MpoolListLocal(ctx context.Context) ([]*types.SignedMessage, error) {
+	return c.Internal.MpoolListLocal(ctx)
 }
 
 func (c *FullNodeStruct) MpoolSub(ctx context.Context) (<-chan api.MpoolUpdate, error) {

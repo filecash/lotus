@@ -253,6 +253,10 @@ func (a *MpoolAPI) MpoolPushMessage2(ctx context.Context, msg *types.Message, sp
 	})
 }
 
+func (a *MpoolAPI) MpoolListLocal(ctx context.Context) ([]*types.SignedMessage, error) {
+	return a.Mpool.ListLocal()
+}
+
 func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {
 	var messageCids []cid.Cid
 	for _, smsg := range smsgs {
