@@ -173,15 +173,15 @@ var sealBenchCmd = &cli.Command{
 
 		}
 
-		log.Infof("miner maddr: ", maddr, " ")
+		log.Info("miner maddr: ", maddr, " ")
 		amid, err := address.IDFromAddress(maddr)
 		if err != nil {
 			stackerror.New(err.Error())
 			return err
 		}
-		log.Infof("miner amid: ", amid, " ")
+		log.Info("miner amid: ", amid, " ")
 		mid := abi.ActorID(amid)
-		log.Infof("miner mid: ", mid, " ")
+		log.Info("miner mid: ", mid, " ")
 
 		// sector size
 		sectorSizeInt, err := units.RAMInBytes(c.String("sector-size"))
