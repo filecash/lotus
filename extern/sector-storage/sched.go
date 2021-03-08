@@ -410,8 +410,8 @@ func (sh *scheduler) trySched() {
 					continue
 				}
 				if task.taskType != sealtasks.TTFetch {
-					if exist && sectorGroup != "all" {
-						workerGroup := worker.workerRpc.GetWorkerGroup(task.ctx)
+					workerGroup := worker.workerRpc.GetWorkerGroup(task.ctx)
+					if exist && sectorGroup != "all" && workerGroup != "all" {
 						if workerGroup != sectorGroup {
 							log.Infof("sectorGroup does not match workerGroup, sectorid: %v, sectorGroup: %s, workerGroup: %s, taskType: %s \n", task.sector, sectorGroup, workerGroup, task.taskType)
 							continue
