@@ -512,14 +512,6 @@ func (sh *scheduler) trySched() {
 
 			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
 
-			worker.lk.Lock()
-			err = worker.workerRpc.AddRange(task.ctx, task.taskType, 1)
-			if err != nil {
-				worker.lk.Unlock()
-				continue
-			}
-			worker.lk.Unlock()
-
 			err = worker.workerRpc.AddStore(task.ctx, task.sector.ID, task.taskType)
 			if err != nil {
 				continue

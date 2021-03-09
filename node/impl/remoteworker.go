@@ -48,9 +48,9 @@ func (r *remoteWorker) Close() error {
 	return nil
 }
 
-func (r *remoteWorker) AddRange(ctx context.Context, task sealtasks.TaskType, addType int) error {
-	return r.WorkerAPI.AddRange(ctx, task, addType)
-}
+//func (r *remoteWorker) AddRange(ctx context.Context, task sealtasks.TaskType, act sealtasks.TaskAction) error {
+//	return r.WorkerAPI.AddRange(ctx, task, act)
+//}
 
 func (r *remoteWorker) AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error) {
 	return r.WorkerAPI.AllowableRange(ctx, task)

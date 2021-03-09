@@ -51,8 +51,6 @@ type WorkerAPI interface {
 
 	AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error)
 
-	AddRange(ctx context.Context, task sealtasks.TaskType, addType int) error
-
 	GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo
 
 	AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error

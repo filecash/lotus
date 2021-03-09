@@ -422,13 +422,12 @@ type WorkerStruct struct {
 		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
 
-		AddRange        func(ctx context.Context, task sealtasks.TaskType, addType int) error         `perm:"admin"`
-		AllowableRange  func(ctx context.Context, task sealtasks.TaskType) (bool, error)              `perm:"admin"`
-		GetWorkerInfo   func(ctx context.Context) sectorstorage.WorkerInfo                            `perm:"admin"`
-		AddStore        func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
-		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
-		SetWorkerParams func(ctx context.Context, key string, val string) error                       `perm:"admin"`
-		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
+		AllowableRange  func(ctx context.Context, task sealtasks.TaskType) (bool, error)                   `perm:"admin"`
+		GetWorkerInfo   func(ctx context.Context) sectorstorage.WorkerInfo                                 `perm:"admin"`
+		AddStore        func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error      `perm:"admin"`
+		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error      `perm:"admin"`
+		SetWorkerParams func(ctx context.Context, key string, val string) error                            `perm:"admin"`
+		GetWorkerGroup  func(ctx context.Context) string                                                   `perm:"admin"`
 
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
 		WalletLock         func(context.Context) error                                                                  `perm:"admin"`
@@ -1877,10 +1876,6 @@ func (c *WalletStruct) WalletClearPasswd(ctx context.Context) (bool, error) {
 
 func (c *WalletStruct) DeleteKey2(addr address.Address) error {
 	return c.Internal.DeleteKey2(addr)
-}
-
-func (w *WorkerStruct) AddRange(ctx context.Context, task sealtasks.TaskType, addType int) error {
-	return w.Internal.AddRange(ctx, task, addType)
 }
 
 func (w *WorkerStruct) AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error) {

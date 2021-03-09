@@ -397,6 +397,8 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 	var out storiface.SectorPaths
 	var storageIDs storiface.SectorPaths
 
+	log.Infow("acquire sector ", "sid:", sid.ID, "type:", sid.ProofType, "allocat", allocate, "pathType", pathType)
+
 	for _, fileType := range storiface.PathTypes {
 		if fileType&existing == 0 {
 			continue
@@ -421,7 +423,6 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 			spath := p.sectorPath(sid.ID, fileType)
 			storiface.SetPathByType(&out, fileType, spath)
 			storiface.SetPathByType(&storageIDs, fileType, string(info.ID))
-
 			existing ^= fileType
 			break
 		}
@@ -439,7 +440,6 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 
 		var best string
 		var bestID ID
-
 		for _, si := range sis {
 			p, ok := st.paths[si.ID]
 			if !ok {

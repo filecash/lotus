@@ -46,7 +46,6 @@ type Worker interface {
 	Close() error
 
 	AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error)
-	AddRange(ctx context.Context, task sealtasks.TaskType, addType int) error
 	GetWorkerInfo(ctx context.Context) WorkerInfo
 	AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error
 	DeleteStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error

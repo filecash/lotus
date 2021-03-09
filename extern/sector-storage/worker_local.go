@@ -32,6 +32,13 @@ import (
 
 var pathTypes = []storiface.SectorFileType{storiface.FTUnsealed, storiface.FTSealed, storiface.FTCache}
 
+type TaskAction int
+
+const (
+	StartTask TaskAction = 0
+	EndTask TaskAction = 1
+)
+
 type WorkerConfig struct {
 	TaskTypes []sealtasks.TaskType
 	NoSwap    bool
@@ -56,7 +63,7 @@ type LocalWorker struct {
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
 	running     sync.WaitGroup
-	taskLk      sync.Mutex
+	lk          sync.Mutex
 
 	session     uuid.UUID
 	testDisable int64
@@ -71,13 +78,11 @@ type LocalWorker struct {
 	group         string
 	storeList     taskList
 
-	lkID      sync.Mutex
 	taskCount int32
 	ID        uuid.UUID
 }
 
 type taskList struct {
-	lk   sync.Mutex
 	list map[abi.SectorID]string
 }
 
@@ -554,23 +559,23 @@ func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector st
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {
-	l.taskLk.Lock()
-	defer l.taskLk.Unlock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
 
 	return l.acceptTasks, nil
 }
 
 func (l *LocalWorker) TaskDisable(ctx context.Context, tt sealtasks.TaskType) error {
-	l.taskLk.Lock()
-	defer l.taskLk.Unlock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
 
 	delete(l.acceptTasks, tt)
 	return nil
 }
 
 func (l *LocalWorker) TaskEnable(ctx context.Context, tt sealtasks.TaskType) error {
-	l.taskLk.Lock()
-	defer l.taskLk.Unlock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
 
 	l.acceptTasks[tt] = struct{}{}
 	return nil
@@ -671,23 +676,22 @@ var _ context.Context = &wctx{}
 
 var _ Worker = &LocalWorker{}
 
-func (l *LocalWorker) AddRange(ctx context.Context, task sealtasks.TaskType, addType int) error {
-
+func (l *LocalWorker) addRange(ctx context.Context, task sealtasks.TaskType, act TaskAction) error {
 	switch task {
 	case sealtasks.TTPreCommit1:
-		if addType == 1 {
+		if act == StartTask {
 			l.preCommit1Now++
 		} else {
 			l.preCommit1Now--
 		}
 	case sealtasks.TTPreCommit2:
-		if addType == 1 {
+		if act == StartTask {
 			l.preCommit2Now++
 		} else {
 			l.preCommit2Now--
 		}
 	case sealtasks.TTCommit1, sealtasks.TTCommit2:
-		if addType == 1 {
+		if act == StartTask {
 			l.commitNow++
 		} else {
 			l.commitNow--
@@ -698,6 +702,8 @@ func (l *LocalWorker) AddRange(ctx context.Context, task sealtasks.TaskType, add
 }
 
 func (l *LocalWorker) AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error) {
+	l.lk.Lock()
+	defer l.lk.Unlock()
 
 	switch task {
 
@@ -740,6 +746,9 @@ func (l *LocalWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTyp
 func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
 	task := make([]string, 0)
 
+	l.lk.Lock()
+	defer l.lk.Unlock()
+
 	for info := range l.acceptTasks {
 		task = append(task, sealtasks.TaskMean[info])
 	}
@@ -767,22 +776,26 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
 	return workerInfo
 }
 func (l *LocalWorker) AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
-	l.storeList.lk.Lock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
+	l.addRange(ctx,taskType,StartTask)
 	l.storeList.list[ID] = sealtasks.TaskMean[taskType]
-	l.storeList.lk.Unlock()
 	return nil
 }
 func (l *LocalWorker) DeleteStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
-	l.storeList.lk.Lock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
 	info, exit := l.storeList.list[ID]
 	if exit && info == sealtasks.TaskMean[taskType] {
 		delete(l.storeList.list, ID)
+		l.addRange(ctx,taskType,EndTask)
 	}
-	l.storeList.lk.Unlock()
 	return nil
 }
 
 func (l *LocalWorker) SetWorkerParams(ctx context.Context, key string, val string) error {
+	l.lk.Lock()
+	defer l.lk.Unlock()
 	switch key {
 	case "precommit1max":
 		param, err := strconv.ParseInt(val, 10, 64)
@@ -819,15 +832,15 @@ func (l *LocalWorker) GetTaskCount(ctx context.Context) int32 {
 }
 
 func (l *LocalWorker) SetID(ctx context.Context, ID uuid.UUID) error {
-	l.lkID.Lock()
-	defer l.lkID.Unlock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
 	copy(l.ID[:], ID[:])
 	return nil
 }
 
 func (l *LocalWorker) GetID(ctx context.Context) uuid.UUID {
-	l.lkID.Lock()
-	defer l.lkID.Unlock()
+	l.lk.Lock()
+	defer l.lk.Unlock()
 	var id uuid.UUID
 	copy(id[:], l.ID[:])
 	return id
