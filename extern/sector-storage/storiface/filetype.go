@@ -9,6 +9,16 @@ import (
 )
 
 const (
+	ss2KiB   = 2 << 10
+	ss8MiB   = 8 << 20
+	ss512MiB = 512 << 20
+	ss32GiB  = 32 << 30
+	ss64GiB  = 64 << 30
+	ss4GiB   = 4 << 30
+	ss16GiB  = 16 << 30
+)
+
+const (
 	FTUnsealed SectorFileType = 1 << iota
 	FTSealed
 	FTCache
@@ -24,16 +34,40 @@ const (
 
 const FSOverheadDen = 10
 
-var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
-	FTUnsealed: FSOverheadDen,
-	FTSealed:   FSOverheadDen,
-	FTCache:    141, // 11 layers + D(2x ssize) + C + R
+var FSOverheadSeal = map[abi.SectorSize]map[SectorFileType]int{
+	ss4GiB: { // 10x overheads
+		FTUnsealed: FSOverheadDen,
+		FTSealed:   FSOverheadDen,
+		FTCache:    112, // 8 layers + D(2x ssize) + C + R
+	},
+	ss16GiB: { // 10x overheads
+		FTUnsealed: FSOverheadDen,
+		FTSealed:   FSOverheadDen,
+		FTCache:    82, // 5 layers + D(2x ssize) + C + R
+	},
+	ss2KiB: { // 10x overheads
+		FTUnsealed: FSOverheadDen,
+		FTSealed:   FSOverheadDen,
+		FTCache:    141, // 11 layers + D(2x ssize) + C + R
+	},
 }
 
-var FsOverheadFinalized = map[SectorFileType]int{
-	FTUnsealed: FSOverheadDen,
-	FTSealed:   FSOverheadDen,
-	FTCache:    2,
+var FsOverheadFinalized = map[abi.SectorSize]map[SectorFileType]int{
+	ss4GiB: {
+		FTUnsealed: FSOverheadDen,
+		FTSealed:   FSOverheadDen,
+		FTCache:    2,
+	},
+	ss16GiB: {
+		FTUnsealed: FSOverheadDen,
+		FTSealed:   FSOverheadDen,
+		FTCache:    2,
+	},
+	ss2KiB: {
+		FTUnsealed: FSOverheadDen,
+		FTSealed:   FSOverheadDen,
+		FTCache:    2,
+	},
 }
 
 type SectorFileType int
@@ -57,17 +91,22 @@ func (t SectorFileType) Has(singleType SectorFileType) bool {
 
 func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	var need uint64
-	for _, pathType := range PathTypes {
-		if !t.Has(pathType) {
-			continue
-		}
 
-		oh, ok := FSOverheadSeal[pathType]
-		if !ok {
-			return 0, xerrors.Errorf("no seal overhead info for %s", pathType)
-		}
+	if overhead, ok := FSOverheadSeal[ssize]; ok {
+		for _, pathType := range PathTypes {
+			if !t.Has(pathType) {
+				continue
+			}
 
-		need += uint64(oh) * uint64(ssize) / FSOverheadDen
+			oh, ok := overhead[pathType]
+			if !ok {
+				return 0, xerrors.Errorf("no seal overhead info for %s", pathType)
+			}
+
+			need += uint64(oh) * uint64(ssize) / FSOverheadDen
+		}
+	} else {
+		return 0, fmt.Errorf("seal space use not support sector size:%d", ssize)
 	}
 
 	return need, nil

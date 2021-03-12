@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math/bits"
 	"math/rand"
@@ -326,7 +327,7 @@ func (st *Local) reportStorage(ctx context.Context) {
 	}
 }
 
-func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error) {
+func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTabs map[abi.SectorSize]map[storiface.SectorFileType]int) (func(), error) {
 	ssize, err := sid.ProofType.SectorSize()
 	if err != nil {
 		return nil, err
@@ -340,6 +341,15 @@ func (st *Local) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 		st.localLk.Unlock()
 		deferredDone()
 	}()
+
+	sectorSize := abi.SealProofInfos[sid.ProofType].SectorSize
+
+	var overheadTab map[storiface.SectorFileType]int
+	var ok bool
+	if overheadTab, ok = overheadTabs[sectorSize]; !ok {
+		log.Errorf("reserve not support sectorsize:%s", sectorSize)
+		return nil, fmt.Errorf("reserve not support sectorsize:%d", sectorSize)
+	}
 
 	for _, fileType := range storiface.PathTypes {
 		if fileType&ft == 0 {
