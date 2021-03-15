@@ -36,7 +36,7 @@ type TaskAction int
 
 const (
 	StartTask TaskAction = 0
-	EndTask TaskAction = 1
+	EndTask   TaskAction = 1
 )
 
 type WorkerConfig struct {
@@ -69,6 +69,8 @@ type LocalWorker struct {
 	testDisable int64
 	closing     chan struct{}
 
+	addPieceMax   int64
+	addPieceNow   int64
 	preCommit1Max int64
 	preCommit1Now int64
 	preCommit2Max int64
@@ -87,6 +89,8 @@ type taskList struct {
 }
 
 type WorkerInfo struct {
+	AddPieceMax   int64
+	AddPieceNow   int64
 	PreCommit1Max int64
 	PreCommit1Now int64
 	PreCommit2Max int64
@@ -678,6 +682,12 @@ var _ Worker = &LocalWorker{}
 
 func (l *LocalWorker) addRange(ctx context.Context, task sealtasks.TaskType, act TaskAction) error {
 	switch task {
+	case sealtasks.TTAddPiece:
+		if act == StartTask {
+			l.addPieceNow++
+		} else {
+			l.addPieceNow--
+		}
 	case sealtasks.TTPreCommit1:
 		if act == StartTask {
 			l.preCommit1Now++
@@ -712,12 +722,10 @@ func (l *LocalWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTyp
 		this worker will not execute addpiece
 	*/
 	case sealtasks.TTAddPiece:
-		taskTotal := l.preCommit1Now + l.preCommit2Now + l.commitNow
-		if taskTotal > 0 {
-			log.Debug("this task has other task, task: TTAddPiece")
+		if l.addPieceNow >= l.addPieceMax {
+			log.Debug("this task has over range, task: TTAddPiece, max: %v, now: %v", l.addPieceMax, l.addPieceNow)
 			return false, nil
 		}
-
 	case sealtasks.TTPreCommit1:
 		if l.preCommit1Max > 0 {
 			if l.preCommit1Now >= l.preCommit1Max {
@@ -756,6 +764,8 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
 	sort.Strings(task)
 
 	workerInfo := WorkerInfo{
+		AddPieceMax:   l.addPieceMax,
+		AddPieceNow:   l.addPieceNow,
 		PreCommit1Max: l.preCommit1Max,
 		PreCommit1Now: l.preCommit1Now,
 		PreCommit2Max: l.preCommit2Max,
@@ -778,7 +788,7 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
 func (l *LocalWorker) AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
 	l.lk.Lock()
 	defer l.lk.Unlock()
-	l.addRange(ctx,taskType,StartTask)
+	l.addRange(ctx, taskType, StartTask)
 	l.storeList.list[ID] = sealtasks.TaskMean[taskType]
 	return nil
 }
@@ -788,7 +798,7 @@ func (l *LocalWorker) DeleteStore(ctx context.Context, ID abi.SectorID, taskType
 	info, exit := l.storeList.list[ID]
 	if exit && info == sealtasks.TaskMean[taskType] {
 		delete(l.storeList.list, ID)
-		l.addRange(ctx,taskType,EndTask)
+		l.addRange(ctx, taskType, EndTask)
 	}
 	return nil
 }
