@@ -42,7 +42,7 @@ const (
 type WorkerConfig struct {
 	TaskTypes []sealtasks.TaskType
 	NoSwap    bool
-
+	AddPieceMax   int64
 	PreCommit1Max int64
 	PreCommit2Max int64
 	CommitMax     int64
@@ -128,7 +128,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 
 		session: uuid.New(),
 		closing: make(chan struct{}),
-
+		addPieceMax:   wcfg.AddPieceMax,
 		preCommit1Max: wcfg.PreCommit1Max,
 		preCommit2Max: wcfg.PreCommit2Max,
 		commitMax:     wcfg.CommitMax,
@@ -722,9 +722,11 @@ func (l *LocalWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTyp
 		this worker will not execute addpiece
 	*/
 	case sealtasks.TTAddPiece:
-		if l.addPieceNow >= l.addPieceMax {
-			log.Debug("this task has over range, task: TTAddPiece, max: %v, now: %v", l.addPieceMax, l.addPieceNow)
-			return false, nil
+		if l.addPieceNow > 0 {
+			if l.addPieceNow >= l.addPieceMax {
+				log.Debugf("this task has over range, task: TTAddPiece, max: %v, now: %v", l.addPieceMax, l.addPieceNow)
+				return false, nil
+			}
 		}
 	case sealtasks.TTPreCommit1:
 		if l.preCommit1Max > 0 {

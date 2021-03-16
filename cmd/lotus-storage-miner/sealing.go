@@ -126,8 +126,8 @@ var sealingWorkersCmd = &cli.Command{
 			if _, ok := Info[stat.id.String()]; ok {
 				fmt.Printf("\tGroup: %v\n", color.RedString(Info[stat.id.String()].Group))
 				fmt.Printf("\tAcceptTasks: %v\n", Info[stat.id.String()].AcceptTasks)
-				fmt.Printf("\tPreCommit1Max: %d\tPreCommit2Max: %d\tCommitMax: %d\n", Info[stat.id.String()].PreCommit1Max, Info[stat.id.String()].PreCommit2Max, Info[stat.id.String()].CommitMax)
-				fmt.Printf("\tPreCommit1Now: %d\tPreCommit2Now: %d\tCommitNow: %d\n", Info[stat.id.String()].PreCommit1Now, Info[stat.id.String()].PreCommit2Now, Info[stat.id.String()].CommitNow)
+				fmt.Printf("\tAddPieceMax: %d\tPreCommit1Max: %d\tPreCommit2Max: %d\tCommitMax: %d\n", Info[stat.id.String()].AddPieceMax, Info[stat.id.String()].PreCommit1Max, Info[stat.id.String()].PreCommit2Max, Info[stat.id.String()].CommitMax)
+				fmt.Printf("\tAddPieceNow: %d\tPreCommit1Now: %d\tPreCommit2Now: %d\tCommitNow: %d\n", Info[stat.id.String()].AddPieceNow, Info[stat.id.String()].PreCommit1Now, Info[stat.id.String()].PreCommit2Now, Info[stat.id.String()].CommitNow)
 				for ID, task := range Info[stat.id.String()].StoreList {
 					fmt.Printf("\tProcessing: %s \t%s\n", color.BlueString(ID), color.RedString(task))
 				}

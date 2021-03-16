@@ -258,6 +258,11 @@ var runCmd = &cli.Command{
 			Value: "30m",
 		},
 		&cli.Int64Flag{
+			Name:  "addpiecemax",
+			Usage: "Allow the maximum number of simultaneous tasks for addpiece, default value: 0",
+			Value: 0,
+		},
+		&cli.Int64Flag{
 			Name:  "precommit1max",
 			Usage: "Allow the maximum number of simultaneous tasks for precommit1, default value: 0",
 			Value: 0,
@@ -502,7 +507,7 @@ var runCmd = &cli.Command{
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				TaskTypes: taskTypes,
-
+				AddPieceMax:   cctx.Int64("addpiecemax"),
 				PreCommit1Max: cctx.Int64("precommit1max"),
 				PreCommit2Max: cctx.Int64("precommit2max"),
 				CommitMax:     cctx.Int64("commitmax"),
