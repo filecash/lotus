@@ -619,6 +619,18 @@ func (sh *scheduler) Close(ctx context.Context) error {
 	return nil
 }
 
+func (w *workerHandle) deleteTask(taskType sealtasks.TaskType) {
+	v, ok := w.reqTask[taskType]
+	if ok {
+		fmt.Print("remove ")
+		fmt.Println(taskType)
+		if v > 0 {
+			w.reqTask[taskType] -= 1
+		}
+	}
+	log.Warnf("may be err,type :%s is not exist", taskType)
+}
+
 func (w *workerHandle) AddTask(ctx context.Context) error {
 	tasks, err := w.workerRpc.TaskTypes(ctx)
 	if err != nil {

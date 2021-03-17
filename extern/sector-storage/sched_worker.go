@@ -2,7 +2,6 @@ package sectorstorage
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -409,6 +408,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 
 		if err != nil {
 			_ = w.workerRpc.DeleteStore(req.ctx, req.sector.ID, req.taskType)
+			w.deleteTask(req.taskType)
 			
 			w.lk.Lock()
 			w.preparing.free(w.info.Resources, needRes)
@@ -466,14 +466,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			sh.execSectorWorker.lk.Unlock()
 		}
 
-		v, ok := w.reqTask[req.taskType]
-		if ok {
-			fmt.Print("remove ")
-			fmt.Println(req.taskType)
-			if v > 0 {
-				w.reqTask[req.taskType] -= 1
-			}
-		}
+		w.deleteTask(req.taskType)
 
 		sh.workersLk.Unlock()
 
