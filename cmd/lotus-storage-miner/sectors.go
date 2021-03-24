@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"syscall"
+	"os/signal"
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -41,6 +43,81 @@ var sectorsCmd = &cli.Command{
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
 		sectorsCapacityCollateralCmd,
+		autoTaskCmd,
+	},
+}
+
+var autoTaskCmd = &cli.Command{
+	Name:  "autotask",
+	Usage: "Start auto pledge sector task ",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "count",
+			Usage: "auto task run count",
+			Value: 1,
+		},
+		&cli.Int64Flag{
+			Name:  "delay",
+			Usage: "auto task delay",
+			Value: 30,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		log.Info("Starting auto  pledge sector task")
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		fmt.Print("CLI version: ")
+		cli.VersionPrinter(cctx)
+		fmt.Println()
+
+		count := cctx.Int("count")
+		delay := cctx.Int("delay")
+		sigs := make(chan os.Signal, 1)
+
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			<-sigs
+			os.Exit(0)
+		}()
+		
+		waitTask := 0
+		for {
+			list, err := nodeApi.SectorsList(ctx)
+
+			for _, s := range list {
+				st, err := nodeApi.SectorsStatus(ctx, s, true)
+				if err != nil {
+					fmt.Println("id:", s, "err:", err)
+					continue
+				}
+
+				if st.State == api.SectorState(sealing.PreCommit1) {	
+					waitTask ++
+				} 
+			}
+
+			fmt.Printf("p1 task wait count: %d, set p1 count: %d\n", waitTask, count)
+			fmt.Println()
+			
+			for i := waitTask; i < count; i++ {
+				err = nodeApi.PledgeSector(ctx)
+				if err != nil {
+					return xerrors.Errorf("pledge sector to worker: %w", err)
+				}
+			}
+			
+			time.Sleep(time.Duration(delay) * time.Second)
+		}
+
+		return nil
 	},
 }
 
