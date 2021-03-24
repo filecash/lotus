@@ -674,6 +674,8 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 
 func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
 	return sm.AddrSel.AddressConfig, nil
+}
+
 func (sm *StorageMinerAPI) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
 	return sm.StorageMgr.AddWorkerTask(ctx, ID)
 }

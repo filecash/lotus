@@ -152,6 +152,7 @@ var DaemonCmd = &cli.Command{
 		&cli.PathFlag{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
+		},
 		&cli.BoolFlag{
 			Name:  "setup-passwd",
 			Usage: "create passwd file in ketstore",
