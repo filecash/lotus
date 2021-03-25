@@ -168,6 +168,10 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 			return abi.RegisteredSealProof_StackedDrg32GiBV1, nil
 		case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
 			return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow4GiBV1:
+			return abi.RegisteredSealProof_StackedDrg4GiBV1, nil
+		case abi.RegisteredPoStProof_StackedDrgWindow16GiBV1:
+			return abi.RegisteredSealProof_StackedDrg16GiBV1, nil
 		default:
 			return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
 		}
@@ -184,6 +188,10 @@ func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.Re
 		return abi.RegisteredSealProof_StackedDrg32GiBV1_1, nil
 	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
 		return abi.RegisteredSealProof_StackedDrg64GiBV1_1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow4GiBV1:
+		return abi.RegisteredSealProof_StackedDrg4GiBV1_1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow16GiBV1:
+		return abi.RegisteredSealProof_StackedDrg16GiBV1_1, nil
 	default:
 		return -1, xerrors.Errorf("unrecognized window post type: %d", proof)
 	}
@@ -201,6 +209,10 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 		return abi.RegisteredPoStProof_StackedDrgWinning32GiBV1, nil
 	case abi.RegisteredPoStProof_StackedDrgWindow64GiBV1:
 		return abi.RegisteredPoStProof_StackedDrgWinning64GiBV1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow4GiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning4GiBV1, nil
+	case abi.RegisteredPoStProof_StackedDrgWindow16GiBV1:
+		return abi.RegisteredPoStProof_StackedDrgWinning16GiBV1, nil
 	default:
 		return -1, xerrors.Errorf("unknown proof type %d", proof)
 	}

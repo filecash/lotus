@@ -51,13 +51,13 @@ const UpgradeKumquatHeight = 10_000_004
 const UpgradeCalicoHeight = 10_000_005
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 
-const UpgradeOrangeHeight = 10_000_006
+const UpgradeOrangeHeight = UpgradePersianHeight +1
 
 // 2020-12-22T02:00:00Z
-const UpgradeClausHeight = 10_000_007
+const UpgradeClausHeight = UpgradeOrangeHeight +1
 
 // 2021-03-04T00:00:30Z
-var UpgradeActorsV3Height = abi.ChainEpoch(10_000_008)
+var UpgradeActorsV3Height = abi.ChainEpoch(UpgradeClausHeight+1)
 
 func init() {
 	miner0.UpgradeRcHeight = UpgradeBreezeHeight + RcPos
