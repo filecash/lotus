@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/docker/go-units"
+	"github.com/fatih/color"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 	"os"
 	"os/signal"
 	"sort"
@@ -9,11 +13,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/docker/go-units"
-	"github.com/fatih/color"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -87,7 +86,6 @@ var autoTaskCmd = &cli.Command{
 			<-sigs
 			os.Exit(0)
 		}()
-
 
 		for {
 			waitTask := 0
