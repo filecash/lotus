@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 	"syscall"
-	"os/signal"
+	"time"
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -87,9 +87,10 @@ var autoTaskCmd = &cli.Command{
 			<-sigs
 			os.Exit(0)
 		}()
-		
-		waitTask := 0
+
+
 		for {
+			waitTask := 0
 			list, err := nodeApi.SectorsList(ctx)
 
 			for _, s := range list {
@@ -99,21 +100,21 @@ var autoTaskCmd = &cli.Command{
 					continue
 				}
 
-				if st.State == api.SectorState(sealing.PreCommit1) {	
-					waitTask ++
-				} 
+				if st.State == api.SectorState(sealing.PreCommit1) {
+					waitTask++
+				}
 			}
 
 			fmt.Printf("p1 task wait count: %d, set p1 count: %d\n", waitTask, count)
 			fmt.Println()
-			
+
 			for i := waitTask; i < count; i++ {
 				err = nodeApi.PledgeSector(ctx)
 				if err != nil {
 					return xerrors.Errorf("pledge sector to worker: %w", err)
 				}
 			}
-			
+
 			time.Sleep(time.Duration(delay) * time.Second)
 		}
 
