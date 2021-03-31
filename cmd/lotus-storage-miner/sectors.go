@@ -52,7 +52,7 @@ var autoTaskCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "count",
-			Usage: "auto task run count",
+			Usage: "auto task run parallel p1 count",
 			Value: 1,
 		},
 		&cli.Int64Flag{
@@ -101,6 +101,15 @@ var autoTaskCmd = &cli.Command{
 				if st.State == api.SectorState(sealing.PreCommit1) {
 					waitTask++
 				}
+			}
+
+			Infos, err := nodeApi.GetWorker(ctx)
+			if err != nil {
+				return err
+			}
+
+			for _, workerInfo := range Infos {
+				waitTask += int(workerInfo.AddPieceNow)
 			}
 
 			fmt.Printf("p1 task wait count: %d, set p1 count: %d\n", waitTask, count)
