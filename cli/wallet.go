@@ -296,7 +296,7 @@ var walletExport = &cli.Command{
 
 		passwd := cctx.String("passwd")
 		if passwd == "" {
-			return xerrors.Errorf("Must enter your passwd")
+			fmt.Println("tips:Please enter the password(lotus wallet export --help) or the password is not set by default")
 		}
 
 		ki, err := api.WalletExport(ctx, addr, passwd)
