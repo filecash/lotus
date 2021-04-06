@@ -140,6 +140,10 @@ func (lw LedgerWallet) importKey(ki LedgerKeyInfo) (address.Address, error) {
 	return ki.Address, nil
 }
 
+func (lw LedgerWallet) WalletListEncryption(context.Context) ([]api.AddrListEncrypt, error)  {
+	return nil, nil
+}
+
 func (lw LedgerWallet) WalletList(ctx context.Context) ([]address.Address, error) {
 	res, err := lw.ds.Query(query.Query{Prefix: dsLedgerPrefix})
 	if err != nil {

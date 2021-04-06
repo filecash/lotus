@@ -148,6 +148,7 @@ type FullNodeStruct struct {
 		WalletNew             func(context.Context, types.KeyType) (address.Address, error)                                `perm:"write"`
 		WalletHas             func(context.Context, address.Address) (bool, error)                                         `perm:"write"`
 		WalletList            func(context.Context) ([]address.Address, error)                                             `perm:"write"`
+		WalletListEncryption  func(context.Context) ([]api.AddrListEncrypt, error)                                         `perm:"write"`
 		WalletBalance         func(context.Context, address.Address) (types.BigInt, error)                                 `perm:"read"`
 		WalletSign            func(context.Context, address.Address, []byte) (*crypto.Signature, error)                    `perm:"sign"`
 		WalletSignMessage     func(context.Context, address.Address, *types.Message) (*types.SignedMessage, error)         `perm:"sign"`
@@ -367,23 +368,23 @@ type StorageMinerStruct struct {
 		GetWorker      func(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error)   `perm:"admin"`
 		SetWorkerParam func(ctx context.Context, worker string, key string, value string) error `perm:"admin"`
 
-		SealingSchedDiag                      func(context.Context, bool) (interface{}, error)                  `perm:"admin"`
-		DealsImportData                       func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
-		DealsList                             func(ctx context.Context) ([]api.MarketDeal, error)               `perm:"read"`
-		DealsConsiderOnlineStorageDeals       func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOnlineStorageDeals    func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOnlineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOnlineRetrievalDeals  func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOfflineStorageDeals      func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOfflineStorageDeals   func(context.Context, bool) error                                 `perm:"admin"`
-		DealsConsiderOfflineRetrievalDeals    func(context.Context) (bool, error)                               `perm:"read"`
-		DealsSetConsiderOfflineRetrievalDeals func(context.Context, bool) error                                 `perm:"admin"`
+		SealingSchedDiag                       func(context.Context, bool) (interface{}, error)                  `perm:"admin"`
+		DealsImportData                        func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
+		DealsList                              func(ctx context.Context) ([]api.MarketDeal, error)               `perm:"read"`
+		DealsConsiderOnlineStorageDeals        func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOnlineStorageDeals     func(context.Context, bool) error                                 `perm:"admin"`
+		DealsConsiderOnlineRetrievalDeals      func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOnlineRetrievalDeals   func(context.Context, bool) error                                 `perm:"admin"`
+		DealsConsiderOfflineStorageDeals       func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOfflineStorageDeals    func(context.Context, bool) error                                 `perm:"admin"`
+		DealsConsiderOfflineRetrievalDeals     func(context.Context) (bool, error)                               `perm:"read"`
+		DealsSetConsiderOfflineRetrievalDeals  func(context.Context, bool) error                                 `perm:"admin"`
 		DealsConsiderVerifiedStorageDeals      func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderVerifiedStorageDeals   func(context.Context, bool) error                                 `perm:"admin"`
 		DealsConsiderUnverifiedStorageDeals    func(context.Context) (bool, error)                               `perm:"read"`
 		DealsSetConsiderUnverifiedStorageDeals func(context.Context, bool) error                                 `perm:"admin"`
-		DealsPieceCidBlocklist                func(context.Context) ([]cid.Cid, error)                          `perm:"read"`
-		DealsSetPieceCidBlocklist             func(context.Context, []cid.Cid) error                            `perm:"admin"`
+		DealsPieceCidBlocklist                 func(context.Context) ([]cid.Cid, error)                          `perm:"read"`
+		DealsSetPieceCidBlocklist              func(context.Context, []cid.Cid) error                            `perm:"admin"`
 
 		StorageAddLocal func(ctx context.Context, path string) error `perm:"admin"`
 
@@ -435,12 +436,12 @@ type WorkerStruct struct {
 		ProcessSession func(context.Context) (uuid.UUID, error) `perm:"admin"`
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
 
-		AllowableRange  func(ctx context.Context, task sealtasks.TaskType) (bool, error)                   `perm:"admin"`
-		GetWorkerInfo   func(ctx context.Context) sectorstorage.WorkerInfo                                 `perm:"admin"`
-		AddStore        func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error      `perm:"admin"`
-		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error      `perm:"admin"`
-		SetWorkerParams func(ctx context.Context, key string, val string) error                            `perm:"admin"`
-		GetWorkerGroup  func(ctx context.Context) string                                                   `perm:"admin"`
+		AllowableRange  func(ctx context.Context, task sealtasks.TaskType) (bool, error)              `perm:"admin"`
+		GetWorkerInfo   func(ctx context.Context) sectorstorage.WorkerInfo                            `perm:"admin"`
+		AddStore        func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
+		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
+		SetWorkerParams func(ctx context.Context, key string, val string) error                       `perm:"admin"`
+		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
 
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
 		WalletLock         func(context.Context) error                                                                  `perm:"admin"`
@@ -502,14 +503,16 @@ type WalletStruct struct {
 		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"sign"`
 		DeleteKey2         func(address.Address) error                                                                  `perm:"sign"`
 
-		WalletNew    func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
-		WalletHas    func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
-		WalletList   func(context.Context) ([]address.Address, error)                                       `perm:"write"`
-		WalletSign   func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
-		WalletExport func(context.Context, address.Address, string) (*types.KeyInfo, error)                 `perm:"admin"`
-		WalletImport func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
-		WalletDelete func(context.Context, address.Address, string) error                                   `perm:"write"`
-		Closing      func(context.Context) (<-chan struct{}, error)                                         `perm:"admin"`
+		WalletNew            func(context.Context, types.KeyType) (address.Address, error)                          `perm:"write"`
+		WalletHas            func(context.Context, address.Address) (bool, error)                                   `perm:"write"`
+		WalletList           func(context.Context) ([]address.Address, error)                                       `perm:"write"`
+		WalletListEncryption func(context.Context) ([]api.AddrListEncrypt, error)                                   `perm:"write"`
+		WalletSign           func(context.Context, address.Address, []byte, api.MsgMeta) (*crypto.Signature, error) `perm:"sign"`
+		WalletExport         func(context.Context, address.Address, string) (*types.KeyInfo, error)                 `perm:"admin"`
+		WalletImport         func(context.Context, *types.KeyInfo) (address.Address, error)                         `perm:"admin"`
+		WalletDelete         func(context.Context, address.Address, string) error                                   `perm:"write"`
+		Closing              func(context.Context) (<-chan struct {
+		}, error) `perm:"admin"`
 	}
 }
 
@@ -813,6 +816,10 @@ func (c *FullNodeStruct) WalletHas(ctx context.Context, addr address.Address) (b
 
 func (c *FullNodeStruct) WalletList(ctx context.Context) ([]address.Address, error) {
 	return c.Internal.WalletList(ctx)
+}
+
+func (c *FullNodeStruct) WalletListEncryption(ctx context.Context) ([]api.AddrListEncrypt, error) {
+	return c.Internal.WalletListEncryption(ctx)
 }
 
 func (c *FullNodeStruct) WalletBalance(ctx context.Context, a address.Address) (types.BigInt, error) {
@@ -1929,6 +1936,10 @@ func (c *WalletStruct) WalletHas(ctx context.Context, addr address.Address) (boo
 
 func (c *WalletStruct) WalletList(ctx context.Context) ([]address.Address, error) {
 	return c.Internal.WalletList(ctx)
+}
+
+func (c *WalletStruct) WalletListEncryption(ctx context.Context) ([]api.AddrListEncrypt, error) {
+	return c.Internal.WalletListEncryption(ctx)
 }
 
 func (c *WalletStruct) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {

@@ -152,6 +152,20 @@ var sendCmd = &cli.Command{
 			Params:     params,
 		}
 
+		passwd := cctx.String("passwd")
+		addrs, err := api.WalletListEncryption(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range addrs {
+			if addr.Addr.String() == fromAddr.String() {
+				if addr.Encrypt && passwd == "" {
+					return fmt.Errorf("please enter the password")
+				}
+			}
+		}
+
 		if !cctx.Bool("force") {
 			// Funds insufficient check
 			fromBalance, err := api.WalletBalance(ctx, msg.From)
@@ -166,7 +180,6 @@ var sendCmd = &cli.Command{
 			}
 		}
 
-		passwd := cctx.String("passwd")
 		if cctx.IsSet("nonce") {
 			msg.Nonce = cctx.Uint64("nonce")
 			sm, err := api.WalletSignMessage2(ctx, fromAddr, msg, passwd)

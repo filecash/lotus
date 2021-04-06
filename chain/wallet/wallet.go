@@ -26,6 +26,7 @@ const (
 	KDefault     = "default"
 )
 
+
 type LocalWallet struct {
 	keys     map[address.Address]*Key
 	keystore types.KeyStore
@@ -561,6 +562,53 @@ func (w *LocalWallet) WalletSignMessage2(ctx context.Context, k address.Address,
 		Message:   *msg,
 		Signature: *sig,
 	}, nil
+}
+
+func (w *LocalWallet)  WalletListEncryption(context.Context) ([]api.AddrListEncrypt, error){
+	all, err := w.keystore.List()
+	if err != nil {
+		return nil, xerrors.Errorf("listing keystore: %w", err)
+	}
+
+	sort.Strings(all)
+
+	seen := map[address.Address]struct{}{}
+	out := make([]api.AddrListEncrypt, 0, len(all))
+	for _, a := range all {
+		var addr address.Address
+		var err error
+		if strings.HasPrefix(a, KNamePrefix) {
+			name := strings.TrimPrefix(a, KNamePrefix)
+			addr, err = address.NewFromString(name)
+			if err != nil {
+				return nil, xerrors.Errorf("converting name to address: %w", err)
+			}
+
+			if _, ok := seen[addr]; ok {
+				continue // got duplicate with a different prefix
+			}
+			seen[addr] = struct{}{}
+
+			key, err := w.findKey(addr)
+			if err != nil {
+				return nil, err
+			}
+
+			pk := key.PrivateKey
+			var encrypt bool
+			if pk[0] == 0xff && pk[1] == 0xff && pk[2] == 0xff && pk[3] == 0xff {
+				encrypt = true
+			}
+
+			out = append(out, api.AddrListEncrypt{Addr: addr,Encrypt: encrypt})
+		}
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Addr.String() < out[j].Addr.String()
+	})
+
+	return out, nil
 }
 
 var _ api.WalletAPI = &LocalWallet{}

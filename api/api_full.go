@@ -248,6 +248,7 @@ type FullNode interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 	// WalletList lists all the addresses in the wallet.
 	WalletList(context.Context) ([]address.Address, error)
+	WalletListEncryption(context.Context) ([]AddrListEncrypt, error)
 	// WalletBalance returns the balance of the given address at the current head of the chain.
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	// WalletSign signs the given bytes using the given address.
@@ -1015,4 +1016,10 @@ type MsigTransaction struct {
 	Params []byte
 
 	Approved []address.Address
+}
+
+
+type AddrListEncrypt struct {
+	Addr    address.Address
+	Encrypt bool
 }

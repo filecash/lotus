@@ -89,6 +89,19 @@ func (m MultiWallet) WalletHas(ctx context.Context, address address.Address) (bo
 	return w != nil, err
 }
 
+func (m MultiWallet) WalletListEncryption(ctx context.Context) ([]api.AddrListEncrypt, error)  {
+	ws := nonNil(m.Remote, m.Ledger, m.Local)
+	for _, w := range ws {
+		l, err := w.WalletListEncryption(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return l, err
+	}
+
+	return nil, nil
+}
+
 func (m MultiWallet) WalletList(ctx context.Context) ([]address.Address, error) {
 	out := make([]address.Address, 0)
 	seen := map[address.Address]struct{}{}

@@ -20,7 +20,7 @@ import (
 
 	//"github.com/filecoin-project/lotus/chain/actors"
 	//"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
@@ -103,7 +103,7 @@ var walletList = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		addrs, err := api.WalletList(ctx)
+		encryptAddrs, err := api.WalletListEncryption(ctx)
 		if err != nil {
 			return err
 		}
@@ -121,15 +121,15 @@ var walletList = &cli.Command{
 			tablewriter.Col("Default"),
 			tablewriter.NewLineCol("Error"))
 
-		for _, addr := range addrs {
+		for _, encryptAddr := range encryptAddrs {
 			if cctx.Bool("addr-only") {
-				fmt.Println(addr.String())
+				fmt.Println(encryptAddr.Addr.String())
 			} else {
-				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
+				a, err := api.StateGetActor(ctx, encryptAddr.Addr, types.EmptyTSK)
 				if err != nil {
 					if !strings.Contains(err.Error(), "actor not found") {
 						tw.Write(map[string]interface{}{
-							"Address": addr,
+							"Address": encryptAddr.Addr,
 							"Error":   err,
 						})
 						continue
@@ -141,16 +141,17 @@ var walletList = &cli.Command{
 				}
 
 				row := map[string]interface{}{
-					"Address": addr,
+					"Address": encryptAddr.Addr,
 					"Balance": types.FIL(a.Balance),
 					"Nonce":   a.Nonce,
+					"Encrypt": encryptAddr.Encrypt,
 				}
-				if addr == def {
+				if encryptAddr.Addr == def {
 					row["Default"] = "X"
 				}
 
 				if cctx.Bool("id") {
-					id, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+					id, err := api.StateLookupID(ctx, encryptAddr.Addr, types.EmptyTSK)
 					if err != nil {
 						row["ID"] = "n/a"
 					} else {
@@ -159,7 +160,7 @@ var walletList = &cli.Command{
 				}
 
 				if cctx.Bool("market") {
-					mbal, err := api.StateMarketBalance(ctx, addr, types.EmptyTSK)
+					mbal, err := api.StateMarketBalance(ctx, encryptAddr.Addr, types.EmptyTSK)
 					if err == nil {
 						row["Market(Avail)"] = types.FIL(types.BigSub(mbal.Escrow, mbal.Locked))
 						row["Market(Locked)"] = types.FIL(mbal.Locked)
@@ -289,14 +290,23 @@ var walletExport = &cli.Command{
 			}
 		}()
 
-		addr, err := address.NewFromString(cctx.Args().First())
+		passwd := cctx.String("passwd")
+		addrs, err := api.WalletListEncryption(ctx)
 		if err != nil {
 			return err
 		}
 
-		passwd := cctx.String("passwd")
-		if passwd == "" {
-			fmt.Println("tips:Please enter the password(lotus wallet export --help) or the password is not set by default")
+		for _, addr := range addrs {
+			if addr.Addr.String() == cctx.Args().First() {
+				if addr.Encrypt && passwd == "" {
+					return fmt.Errorf("please enter the password(lotus wallet export --help)")
+				}
+			}
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
 		}
 
 		ki, err := api.WalletExport(ctx, addr, passwd)
@@ -526,14 +536,23 @@ var walletDelete = &cli.Command{
 			return fmt.Errorf("must specify address to delete")
 		}
 
-		addr, err := address.NewFromString(cctx.Args().First())
+		passwd := cctx.String("passwd")
+		addrs, err := api.WalletListEncryption(ctx)
 		if err != nil {
 			return err
 		}
 
-		passwd := cctx.String("passwd")
-		if passwd == "" {
-			return xerrors.Errorf("Must enter your passwd")
+		for _, addr := range addrs {
+			if addr.Addr.String() == cctx.Args().First() {
+				if addr.Encrypt && passwd == "" {
+					return fmt.Errorf("please enter the password(lotus wallet delete --help)")
+				}
+			}
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
 		}
 
 		return api.WalletDelete(ctx, addr, passwd)
