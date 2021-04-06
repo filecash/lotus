@@ -426,7 +426,12 @@ func (w *LocalWallet) WalletIsLock(ctx context.Context) (bool, error) {
 }
 
 func (w *LocalWallet) WalletChangePasswd(ctx context.Context, newPasswd string) (bool, error) {
+
 	if IsSetup() {
+		if len(newPasswd) != 16 {
+			return false, xerrors.Errorf("passwd must 16 character")
+		}
+
 		if WalletPasswd != "" {
 			addr_list, err := w.WalletList(ctx)
 
@@ -449,10 +454,6 @@ func (w *LocalWallet) WalletChangePasswd(ctx context.Context, newPasswd string) 
 			defalutAddr, err := w.GetDefault()
 			if err != nil {
 				setDefault = false
-			}
-
-			if len(newPasswd) != 16 {
-				return false, xerrors.Errorf("passwd must 16 character")
 			}
 
 			err = ResetPasswd([]byte(newPasswd))
