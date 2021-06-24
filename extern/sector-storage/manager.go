@@ -358,7 +358,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 	}
 
 	var out abi.PieceInfo
-	fmt.Println("manager 执行 addpiece")
+	fmt.Printf("manager 执行 addpiece: %s\n", sector.ID.Number.String())
 	err = m.sched.ScheduleExt(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
 		p, err := m.waitSimpleCall(ctx)(w.AddPiece(ctx, sector, existingPieces, sz, r))
 		if err != nil {
