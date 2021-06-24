@@ -206,7 +206,6 @@ var autoTaskCmd = &cli.Command{
 			select {
 			case <-timer.C:
 				log.Info("Starting auto task worker")
-				wTime := time.Now().Unix()
 				wapi, workerApiCloser, err := lcli.GetWorkerAPI(cctx)
 				if err != nil {
 					log.Errorf("auto task connect worker failed: %w", err)
@@ -219,8 +218,6 @@ var autoTaskCmd = &cli.Command{
 					continue
 				}
 				workerApiCloser()
-				wEndTime := time.Now().Unix()
-				log.Infof("worker api time: %d", wTime - wEndTime)
 
 				lapi, lcloser, err := lcli.GetFullNodeAPI(cctx)
 				if err != nil {
@@ -238,7 +235,6 @@ var autoTaskCmd = &cli.Command{
 					log.Infof("workerBalance less than  autoTaskBalance, %s, %s", workerBalance.String(), autoTaskBalance.String())
 					continue
 				}
-				mTime := time.Now().Unix()
 				mapi, minerApiCloser, err := lcli.GetStorageMinerAPI(cctx)
 				if err != nil {
 					log.Errorf("auto task connect miner failed: %w", err)
@@ -255,15 +251,12 @@ var autoTaskCmd = &cli.Command{
 					minerApiCloser()
 					continue
 				}
-				ID, err := mapi.PledgeSector(lcli.ReqContext(cctx), isSend.Group)
+				err = mapi.PledgeSector(lcli.ReqContext(cctx), isSend.Group)
 				if err != nil {
 					log.Errorf("auto task pledge sector failed: %w", err)
 				}
 				minerApiCloser()
-				mEndTime := time.Now().Unix()
-				log.Infof("worker api time: %d", mTime - mEndTime)
-
-				log.Infof("auto task pledge sector: %s", ID.Number.String())
+				log.Info("auto task pledge sector success")
 			case <-sigs:
 				os.Exit(0)
 			}
