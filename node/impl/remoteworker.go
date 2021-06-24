@@ -96,4 +96,12 @@ func (r *remoteWorker) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
 	return r.WorkerAPI.GetWorkerWait(ctx, ID)
 }
 
+func (r *remoteWorker) AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error {
+	return r.WorkerAPI.AddAutoTaskLimit(ctx, lim)
+}
+
+func (r *remoteWorker) AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn {
+	return r.WorkerAPI.AutoTaskLimit(ctx)
+}
+
 var _ sectorstorage.Worker = &remoteWorker{}

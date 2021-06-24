@@ -1,6 +1,8 @@
 package sectorstorage
 
 import (
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"time"
 
 	"context"
@@ -122,4 +124,86 @@ func (m *Manager) SetWorkerParam(ctx context.Context, worker, key, value string)
 		return xerrors.Errorf("worker not found: %s", key)
 	}
 	return w.workerRpc.SetWorkerParams(ctx, key, value)
+}
+
+func (m *Manager) UpdateSectorGroup(ctx context.Context, SectorNum string, group string) error {
+	m.sched.execSectorWorker.lk.Lock()
+	defer m.sched.execSectorWorker.lk.Unlock()
+
+	sectorGroup, isExist := m.sched.execSectorWorker.group[SectorNum]
+	if !isExist {
+		return xerrors.Errorf("SectorID not found: %s", SectorNum)
+	}
+	if group == sectorGroup {
+		return xerrors.Errorf("The original group is the same as the current group")
+	}
+
+	m.sched.execSectorWorker.group[SectorNum] = group
+	err := m.sched.updateSectorGroupFile()
+	return err
+}
+
+func (m *Manager) DeleteSectorGroup(ctx context.Context, SectorNum string) error {
+	m.sched.execSectorWorker.lk.Lock()
+	defer m.sched.execSectorWorker.lk.Unlock()
+
+	delete(m.sched.execSectorWorker.group, SectorNum)
+
+	err := m.sched.updateSectorGroupFile()
+	return err
+}
+
+func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
+	m.sched.workersLk.RLock()
+	defer m.sched.workersLk.RUnlock()
+	sh := m.sched
+	wList := make([]WorkerID, 0)
+	if group == "all" {
+		allList := sh.execGroupList.list
+		for _, l := range allList {
+			wList = append(wList, l...)
+		}
+	}else {
+		gList, exist := sh.execGroupList.list[group]
+		if exist {
+			wList = append(wList, gList...)
+		}
+	}
+
+	if len(wList) < 1 {
+		return false, xerrors.Errorf("execGroupList not found：%s", group)
+	}
+
+	accpeWorker := make([]WorkerID, 0)
+	needRes := ResourceTable[sealtasks.TTPreCommit1][abi.RegisteredSealProof_StackedDrg32GiBV1]
+	sel := newAllocSelector(m.index, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, sealtasks.TTPreCommit1)
+	for _, w := range wList {
+		worker, ok := sh.workers[w]
+		if !ok {
+			log.Errorf("worker referenced by windowRequest not found (worker: %s)", worker)
+			// TODO: How to move forward here?
+			continue
+		}
+		if !worker.enabled {
+			log.Debugw("skipping disabled worker", "worker", worker)
+			continue
+		}
+
+		if worker.active.canHandleRequest(needRes, w, "autoTask", worker.info.Resources) {
+			continue
+		}
+		ok, err := sel.Ok(ctx, sealtasks.TTPreCommit1, abi.RegisteredSealProof_StackedDrg32GiBV1, worker)
+		if err != nil {
+			continue
+		}
+		if !ok {
+			continue
+		}
+		accpeWorker = append(accpeWorker, w)
+		break
+	}
+	if len(accpeWorker) > 0 {
+		return false, xerrors.Errorf("can not found worker to do")
+	}
+	return true, nil
 }

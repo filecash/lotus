@@ -39,6 +39,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	UndefinedSectorState: planOne(
 		on(SectorStart{}, Empty),
 		on(SectorStartCC{}, Packing),
+		on(SectorStartCustom{}, Packing),
 	),
 	Empty: planOne(on(SectorAddPiece{}, WaitDeals)),
 	WaitDeals: planOne(

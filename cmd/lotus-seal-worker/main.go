@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/chain/types"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -103,99 +104,171 @@ func main() {
 }
 
 var autoTaskCmd = &cli.Command{
-	Name:  "autotask",
+	Name:  "autoTask",
 	Usage: "Start auto task worker",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name:  "count",
-			Usage: "auto task run count",
-			Value: 1,
+			Name: "app1",
+			Usage: "auto task ap count",
+			Value: 0,
 		},
 		&cli.Int64Flag{
-			Name:  "delay",
-			Usage: "auto task delay",
-			Value: 10,
+			Name: "p2",
+			Usage: "auto task p2 count",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name: "c1",
+			Usage: "auto task c1 count",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name: "c2",
+			Usage: "auto task c2 count",
+			Value: 0,
+		},
+		&cli.Uint64Flag{
+			Name: "balance",
+			Usage: "auto task balance",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name: "delay",
+			Usage: "auto task delay (Seconds)",
+			Value: 180,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting auto task worker")
-
-		api, closer, err := lcli.GetWorkerAPI(cctx)
-		if err != nil {
-			return err
+		delay := cctx.Int64("delay")
+		if delay < 30 {
+			return xerrors.Errorf("Delay cannot be less than 30 seconds")
 		}
-		defer closer()
+		limitList := make(map[string]int64)
 
-		mapi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
+		if app1 := cctx.Int64("app1"); app1 != 0 {
+			limitList["app1"] = app1
 		}
-		defer closer()
+		if p2 := cctx.Int64("p2"); p2 != 0 {
+			limitList["p2"] = p2
+		}
+		if c1 := cctx.Int64("c1"); c1 != 0 {
+			limitList["c1"] = c1
+		}
+		if c2 := cctx.Int64("c1"); c2 != 0 {
+			limitList["c2"] = c2
+		}
+
+		autoTaskBalance := types.BigMul(types.NewInt(cctx.Uint64("balance")), types.NewInt(build.FilecoinPrecision))
 
 		ctx := lcli.ReqContext(cctx)
 
-		ver, err := api.Version(ctx)
+		nodeApi, nodeApiCloser, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
-			return xerrors.Errorf("getting version: %w", err)
+			return err
+		}
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			nodeApiCloser()
+			return err
+		}
+		nodeApiCloser()
+
+		lotusApi, lotusCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
 		}
 
-		fmt.Println("Worker version: ", ver)
-		fmt.Print("CLI version: ")
-		cli.VersionPrinter(cctx)
-		fmt.Println()
+		mInfo, err := lotusApi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			lotusCloser()
+			return err
+		}
+		lotusCloser()
 
-		count := cctx.Int("count")
-		delay := cctx.Int("delay")
-		sigs := make(chan os.Signal, 1)
+		api, Closer, err := lcli.GetWorkerAPI(cctx)
+		if err != nil {
+			return err
+		}
 
+		if err := api.AddAutoTaskLimit(ctx, limitList); err != nil {
+			Closer()
+			return err
+		}
+		Closer()
+
+		sigs := make(chan os.Signal,1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-		go func() {
-			<-sigs
-			os.Exit(0)
-		}()
-
+		timer := time.NewTicker(time.Duration(delay) * time.Second)
 		for {
-			taskCount := api.GetTaskCount(ctx)
-			wid := api.GetID(ctx)
-			waitTask := mapi.GetWorkerWait(ctx, wid)
-			fmt.Printf("Task Count: %d\n", taskCount)
-			fmt.Printf("wid: %s\n", wid.String())
-			fmt.Printf("Task Wait: %d\n", waitTask)
-			fmt.Println()
-			if taskCount+int32(waitTask) == 0 {
-				for i := 0; i < count; i++ {
-					err = mapi.PledgeSectorToWorker(ctx, wid)
-					if err != nil {
-						return xerrors.Errorf("pledge sector to worker: %w", err)
-					}
-				}
-			}
-			list, err := mapi.SectorsList(ctx)
-			if err != nil {
-				return err
-			}
-			isProving := true
-			for _, s := range list {
-				st, err := mapi.SectorsStatus(ctx, s, true)
-				if err != nil {
-					return err
-				}
-				if st.State != "Proving" {
-					isProving = false
-				}
-			}
-			if isProving {
-				for i := 0; i < count; i++ {
-					err = mapi.PledgeSector(ctx)
-					if err != nil {
-						return err
-					}
-				}
-			}
-			time.Sleep(time.Duration(delay) * time.Second)
-		}
 
+			select {
+			case <-timer.C:
+				log.Info("Starting auto task worker")
+				wTime := time.Now().Unix()
+				wapi, workerApiCloser, err := lcli.GetWorkerAPI(cctx)
+				if err != nil {
+					log.Errorf("auto task connect worker failed: %w", err)
+					continue
+				}
+				isSend := wapi.AutoTaskLimit(lcli.ReqContext(cctx))
+				if !isSend.IsSend{
+					log.Error("auto task AutoTaskLimit failed")
+					workerApiCloser()
+					continue
+				}
+				workerApiCloser()
+				wEndTime := time.Now().Unix()
+				log.Infof("worker api time: %d", wTime - wEndTime)
+
+				lapi, lcloser, err := lcli.GetFullNodeAPI(cctx)
+				if err != nil {
+					log.Errorf("auto task connect lotus failed: %w", err)
+					continue
+				}
+				workerBalance, err := lapi.WalletBalance(lcli.ReqContext(cctx), mInfo.Worker)
+				if err != nil {
+					log.Errorf("auto task connect worker failed: %w", err)
+					lcloser()
+					continue
+				}
+				lcloser()
+				if types.BigCmp(workerBalance, autoTaskBalance) < 0 {
+					log.Infof("workerBalance less than  autoTaskBalance, %s, %s", workerBalance.String(), autoTaskBalance.String())
+					continue
+				}
+				mTime := time.Now().Unix()
+				mapi, minerApiCloser, err := lcli.GetStorageMinerAPI(cctx)
+				if err != nil {
+					log.Errorf("auto task connect miner failed: %w", err)
+					continue
+				}
+				isSched, err := mapi.TrySched(lcli.ReqContext(cctx), isSend.Group)
+				if err != nil {
+					log.Errorf("auto task TrySched failed: %w", err)
+					minerApiCloser()
+					continue
+				}
+				if !isSched {
+					log.Error("auto task TrySched is false")
+					minerApiCloser()
+					continue
+				}
+				ID, err := mapi.PledgeSector(lcli.ReqContext(cctx), isSend.Group)
+				if err != nil {
+					log.Errorf("auto task pledge sector failed: %w", err)
+				}
+				minerApiCloser()
+				mEndTime := time.Now().Unix()
+				log.Infof("worker api time: %d", mTime - mEndTime)
+
+				log.Infof("auto task pledge sector: %s", ID.Number.String())
+			case <-sigs:
+				os.Exit(0)
+			}
+
+		}
 		return nil
 	},
 }
@@ -275,6 +348,11 @@ var runCmd = &cli.Command{
 		&cli.Int64Flag{
 			Name:  "commitmax",
 			Usage: "Allow the maximum number of simultaneous tasks for commit2, default value: 0",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "app1max",
+			Usage: "Allow the maximum number of simultaneous tasks for addpiece and precommit1, if app1share is on, this parameter cannot be 0, default value: 0",
 			Value: 0,
 		},
 		&cli.StringFlag{
@@ -511,6 +589,7 @@ var runCmd = &cli.Command{
 				PreCommit1Max: cctx.Int64("precommit1max"),
 				PreCommit2Max: cctx.Int64("precommit2max"),
 				CommitMax:     cctx.Int64("commitmax"),
+				ApP1max : 		cctx.Int64("app1max"),
 				Group:         cctx.String("group"),
 
 				NoSwap: cctx.Bool("no-swap"),

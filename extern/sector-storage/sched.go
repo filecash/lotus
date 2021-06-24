@@ -2,8 +2,12 @@ package sectorstorage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -57,6 +61,7 @@ type scheduler struct {
 	workers   map[WorkerID]*workerHandle
 
 	execSectorWorker sectorGroup
+	execGroupList    groupList
 
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
@@ -78,10 +83,19 @@ type scheduler struct {
 
 type sectorGroup struct {
 	lk    sync.RWMutex
-	group map[abi.SectorID]string
+	group map[string]string
+	path  string
+}
+
+type groupList struct {
+	lk sync.RWMutex
+	list map[string][]WorkerID
 }
 
 type workerHandle struct {
+
+	isDeleteGroup bool
+
 	workerRpc Worker
 
 	info storiface.WorkerInfo
@@ -153,11 +167,35 @@ type workerResponse struct {
 }
 
 func newScheduler() *scheduler {
+
+	var sectorGroups map[string]string
+	minerPath := filepath.Join(os.Getenv("LOTUS_MINER_PATH"), "sectorGroup.json")
+
+	_, err := os.Stat(minerPath)
+	if err == nil {
+		sector, err := ioutil.ReadFile(minerPath)
+		if err == nil {
+			err = json.Unmarshal(sector, &sectorGroups)
+			if err != nil {
+				sectorGroups = map[string]string{}
+			}
+		} else {
+			sectorGroups = map[string]string{}
+		}
+	} else {
+		sectorGroups = map[string]string{}
+	}
+
 	return &scheduler{
 		workers: map[WorkerID]*workerHandle{},
 
 		execSectorWorker: sectorGroup{
-			group: map[abi.SectorID]string{},
+			group: sectorGroups,
+			path:  minerPath,
+		},
+
+		execGroupList: groupList{
+			list: map[string][]WorkerID{},
 		},
 
 		schedule:       make(chan *workerRequest),
@@ -180,6 +218,40 @@ func newScheduler() *scheduler {
 }
 
 func (sh *scheduler) Schedule(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
+	ret := make(chan workerResponse)
+
+	select {
+	case sh.schedule <- &workerRequest{
+		sector:   sector,
+		taskType: taskType,
+		priority: getPriority(ctx),
+		sel:      sel,
+
+		prepare: prepare,
+		work:    work,
+
+		start: time.Now(),
+
+		ret: ret,
+		ctx: ctx,
+	}:
+	case <-sh.closing:
+		return xerrors.New("closing")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	select {
+	case resp := <-ret:
+		return resp.err
+	case <-sh.closing:
+		return xerrors.New("closing")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (sh *scheduler) ScheduleExt(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction, group string) error {
 	ret := make(chan workerResponse)
 
 	select {
@@ -393,7 +465,7 @@ func (sh *scheduler) trySched() {
 			needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 			sh.execSectorWorker.lk.RLock()
-			sectorGroup, exist := sh.execSectorWorker.group[task.sector.ID]
+			sectorGroup, exist := sh.execSectorWorker.group[task.sector.ID.Number.String()]
 			sh.execSectorWorker.lk.RUnlock()
 
 			task.indexHeap = sqi
@@ -619,50 +691,19 @@ func (sh *scheduler) Close(ctx context.Context) error {
 	return nil
 }
 
-func (w *workerHandle) deleteTask(taskType sealtasks.TaskType) {
-	v, ok := w.reqTask[taskType]
-	if ok {
-		fmt.Print("remove ")
-		fmt.Println(taskType)
-		if v > 0 {
-			w.reqTask[taskType] -= 1
-		}
-	}
-	log.Warnf("may be err,type :%s is not exist", taskType)
-}
-
-func (w *workerHandle) AddTask(ctx context.Context) error {
-	tasks, err := w.workerRpc.TaskTypes(ctx)
+func (sh *scheduler) updateSectorGroupFile() error {
+	fmt.Printf("create or modify : %s\n", sh.execSectorWorker.path)
+	f, err := os.OpenFile(sh.execSectorWorker.path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 	if err != nil {
-		return xerrors.Errorf("getting supported worker task types: %w", err)
+		return err
 	}
-	w.lk.Lock()
-	for k, _ := range tasks {
-		if k != sealtasks.TTAddPiece && k != sealtasks.TTPreCommit1 && k != sealtasks.TTPreCommit2 &&
-			k != sealtasks.TTCommit1 && k != sealtasks.TTCommit2 {
-			fmt.Print("continue ")
-			fmt.Println(k)
-			continue
-		}
-		_, ok := w.reqTask[k]
-		if ok {
-			w.reqTask[k] += 1
-		} else {
-			w.reqTask[k] = 1
-		}
-		fmt.Print("add ")
-		fmt.Println(k)
+	sector, err := json.MarshalIndent(sh.execSectorWorker.group, "", "\t")
+	if err != nil {
+		return err
 	}
-	w.lk.Unlock()
-	return nil
-}
-
-func (w *workerHandle) GetWorkerWait() int {
-	var c int = 0
-	w.lk.Lock()
-	for _, v := range w.reqTask {
-		c += int(v)
+	_, err = f.Write(sector)
+	if err != nil {
+		return err
 	}
-	w.lk.Unlock()
-	return c
+	return f.Close()
 }
