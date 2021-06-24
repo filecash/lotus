@@ -8,14 +8,12 @@ import (
 	"io"
 	"time"
 
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -364,7 +362,7 @@ type StorageMinerStruct struct {
 		WorkerStats   func(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
 
-		GetWorker      func(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error)   `perm:"admin"`
+		GetWorker      func(ctx context.Context) (map[string]storiface.WorkerParams, error)   `perm:"admin"`
 		SetWorkerParam func(ctx context.Context, worker string, key string, value string) error `perm:"admin"`
 		UpdateSectorGroup func(ctx context.Context, SectorNum string, group string) error `perm:"admin"`
 		DeleteSectorGroup func(ctx context.Context, SectorNum string) error `perm:"admin"`
@@ -398,8 +396,6 @@ type StorageMinerStruct struct {
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 
 		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
-		AddWorkerTask func(ctx context.Context, ID uuid.UUID) error                                                                                           `perm:"read"`
-		GetWorkerWait func(ctx context.Context, ID uuid.UUID) int                                                                                             `perm:"admin"`
 	}
 }
 
@@ -454,11 +450,6 @@ type WorkerStruct struct {
 		WalletChangePasswd func(context.Context, string) (bool, error)                                                  `perm:"admin"`
 		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"admin"`
 		DeleteKey2         func(address.Address)                                                                        `perm:"admin"`
-		GetTaskCount       func(ctx context.Context) int32                                                              `perm:"admin"`
-		SetID              func(ctx context.Context, ID uuid.UUID) error                                                `perm:"admin"`
-		GetID              func(ctx context.Context) uuid.UUID                                                          `perm:"admin"`
-		AddWorkerTask      func(ctx context.Context, ID uuid.UUID) error                                                `perm:"read"`
-		GetWorkerWait      func(ctx context.Context, ID uuid.UUID) int                                                  `perm:"read"`
 	}
 }
 
@@ -1712,13 +1703,6 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
 }
-func (c *StorageMinerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.AddWorkerTask(ctx, ID)
-}
-
-func (c *StorageMinerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return c.Internal.GetWorkerWait(ctx, ID)
-}
 
 // WorkerStruct
 
@@ -2001,7 +1985,7 @@ func (w *WorkerStruct) AllowableRange(ctx context.Context, task sealtasks.TaskTy
 	return w.Internal.AllowableRange(ctx, task)
 }
 
-func (c *WorkerStruct) GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo {
+func (c *WorkerStruct) GetWorkerInfo(ctx context.Context) storiface.WorkerParams {
 	return c.Internal.GetWorkerInfo(ctx)
 }
 
@@ -2027,26 +2011,6 @@ func (c *WorkerStruct) AddAutoTaskLimit(ctx context.Context, lim map[string]int6
 
 func (c *WorkerStruct) AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn {
 	return c.Internal.AutoTaskLimit(ctx)
-}
-
-func (c *WorkerStruct) GetTaskCount(ctx context.Context) int32 {
-	return c.Internal.GetTaskCount(ctx)
-}
-
-func (c *WorkerStruct) SetID(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.SetID(ctx, ID)
-}
-
-func (c *WorkerStruct) GetID(ctx context.Context) uuid.UUID {
-	return c.Internal.GetID(ctx)
-}
-
-func (c *WorkerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.AddWorkerTask(ctx, ID)
-}
-
-func (c *WorkerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return c.Internal.GetWorkerWait(ctx, ID)
 }
 
 var _ api.Common = &CommonStruct{}

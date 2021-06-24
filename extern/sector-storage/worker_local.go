@@ -922,33 +922,6 @@ func (l *LocalWorker) GetWorkerGroup(ctx context.Context) string {
 	return l.group
 }
 
-func (l *LocalWorker) GetTaskCount(ctx context.Context) int32 {
-	return atomic.LoadInt32(&l.taskCount)
-}
-
-func (l *LocalWorker) SetID(ctx context.Context, ID uuid.UUID) error {
-	l.lk.Lock()
-	defer l.lk.Unlock()
-	copy(l.ID[:], ID[:])
-	return nil
-}
-
-func (l *LocalWorker) GetID(ctx context.Context) uuid.UUID {
-	l.lk.Lock()
-	defer l.lk.Unlock()
-	var id uuid.UUID
-	copy(id[:], l.ID[:])
-	return id
-}
-
-func (l *LocalWorker) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return xerrors.Errorf("not supported at this layer")
-}
-
-func (l *LocalWorker) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return -1
-}
-
 func (l *LocalWorker) AddAutoTaskLimit(ctx context.Context, limit map[string]int64) error {
 	for k, v := range limit {
 		if err := l.setAutoTaskParam(k, v); err != nil{

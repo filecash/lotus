@@ -59,15 +59,6 @@ type WorkerAPI interface {
 
 	GetWorkerGroup(ctx context.Context) string
 
-	GetTaskCount(ctx context.Context) int32
-
-	SetID(ctx context.Context, ID uuid.UUID) error
-
-	GetID(ctx context.Context) uuid.UUID
-
-	AddWorkerTask(ctx context.Context, ID uuid.UUID) error
-	GetWorkerWait(ctx context.Context, ID uuid.UUID) int
-
 	AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error
 
 	AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn

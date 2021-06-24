@@ -7,15 +7,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/bits"
 	"os"
-	"runtime"
 	"os/exec"
-	"fmt"
+	"runtime"
 
-	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -782,14 +781,6 @@ func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef,
 
 func (sb *Sealer) Remove(ctx context.Context, sector storage.SectorRef) error {
 	return xerrors.Errorf("not supported at this layer") // happens in localworker
-}
-
-func (sb *Sealer) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return xerrors.Errorf("not supported at this layer")
-}
-
-func (sb *Sealer) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return -1
 }
 
 func GetRequiredPadding(oldLength abi.PaddedPieceSize, newPieceLength abi.PaddedPieceSize) ([]abi.PaddedPieceSize, abi.PaddedPieceSize) {

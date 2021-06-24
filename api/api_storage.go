@@ -149,8 +149,6 @@ type StorageMiner interface {
 	CreateBackup(ctx context.Context, fpath string) error
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error)
-	AddWorkerTask(ctx context.Context, ID uuid.UUID) error
-	GetWorkerWait(ctx context.Context, ID uuid.UUID) int
 }
 
 type SealRes struct {

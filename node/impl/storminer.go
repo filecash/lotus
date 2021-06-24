@@ -684,12 +684,4 @@ func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressC
 	return sm.AddrSel.AddressConfig, nil
 }
 
-func (sm *StorageMinerAPI) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return sm.StorageMgr.AddWorkerTask(ctx, ID)
-}
-
-func (sm *StorageMinerAPI) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return sm.StorageMgr.GetWorkerWait(ctx, ID)
-}
-
 var _ api.StorageMiner = &StorageMinerAPI{}
