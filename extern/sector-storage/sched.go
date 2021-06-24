@@ -150,6 +150,8 @@ type workerRequest struct {
 	priority int // larger values more important
 	sel      WorkerSelector
 
+	group  string
+
 	prepare WorkerAction
 	work    WorkerAction
 
@@ -265,6 +267,8 @@ func (sh *scheduler) ScheduleExt(ctx context.Context, sector storage.SectorRef, 
 		work:    work,
 
 		start: time.Now(),
+
+		group:   group,
 
 		ret: ret,
 		ctx: ctx,
@@ -467,7 +471,11 @@ func (sh *scheduler) trySched() {
 			sh.execSectorWorker.lk.RLock()
 			sectorGroup, exist := sh.execSectorWorker.group[task.sector.ID.Number.String()]
 			sh.execSectorWorker.lk.RUnlock()
-
+			if !exist && task.taskType == sealtasks.TTAddPiece && task.group != "" {
+				log.Debugf("execSectorWorker.group info: exist = %v, taskType = %v, taskGroup = %s\n", exist, task.taskType, task.group)
+				exist = true
+				sectorGroup = task.group
+			}
 			task.indexHeap = sqi
 			for wnd, windowRequest := range sh.openWindows {
 				worker, ok := sh.workers[windowRequest.worker]
@@ -485,7 +493,7 @@ func (sh *scheduler) trySched() {
 					workerGroup := worker.workerRpc.GetWorkerGroup(task.ctx)
 					if exist && sectorGroup != "all" && workerGroup != "all" {
 						if workerGroup != sectorGroup {
-							log.Infof("sectorGroup does not match workerGroup, sectorid: %v, sectorGroup: %s, workerGroup: %s, taskType: %s \n", task.sector, sectorGroup, workerGroup, task.taskType)
+							log.Debugf("sectorGroup does not match workerGroup, sectorid: %v, sectorGroup: %s, workerGroup: %s, taskType: %s \n", task.sector, sectorGroup, workerGroup, task.taskType)
 							continue
 						}
 					}
