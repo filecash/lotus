@@ -98,11 +98,11 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 	return out
 }
 
-func (m *Manager) GetWorker(ctx context.Context) map[string]WorkerInfo {
+func (m *Manager) GetWorker(ctx context.Context) map[string]storiface.WorkerParams {
 	m.sched.workersLk.Lock()
 	defer m.sched.workersLk.Unlock()
 
-	out := map[string]WorkerInfo{}
+	out := map[string]storiface.WorkerParams{}
 
 	for id, handle := range m.sched.workers {
 		info := handle.workerRpc.GetWorkerInfo(ctx)

@@ -432,7 +432,6 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 
 		if err != nil {
 			_ = w.workerRpc.DeleteStore(req.ctx, req.sector.ID, req.taskType)
-			w.deleteTask(req.taskType)
 			
 			w.lk.Lock()
 			w.preparing.free(w.info.Resources, needRes)
