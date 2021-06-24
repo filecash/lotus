@@ -938,11 +938,20 @@ func (l *LocalWorker) AutoTaskLimit(ctx context.Context) storiface.AutoTaskRetur
 	for t, c := range l.autoTaskLimit {
 		switch t {
 		case "app1":
-			if l.addPieceNow + l.preCommit1Now >= c {
-				log.Debugf("addPieceNow: %d, preCommit1Now: %d, autoTaskLimit: %d, return: false",l.addPieceNow, l.preCommit1Now, l.autoTaskLimit["app1"])
-				isSend = false
-				break
+			if l.apP1Share {
+				if l.addPieceNow + l.preCommit1Now >= c {
+					log.Debugf("addPieceNow: %d, preCommit1Now: %d, autoTaskLimit: %d, return: false",l.addPieceNow, l.preCommit1Now, l.autoTaskLimit["app1"])
+					isSend = false
+					break
+				}
+			} else {
+				if l.preCommit1Now >= c {
+					log.Debugf("addPieceNow: %d, preCommit1Now: %d, autoTaskLimit: %d, return: false",l.addPieceNow, l.preCommit1Now, l.autoTaskLimit["app1"])
+					isSend = false
+					break
+				}
 			}
+
 		case "p2":
 			if l.preCommit2Now >= c {
 				isSend = false
