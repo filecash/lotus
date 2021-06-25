@@ -1,6 +1,7 @@
 package sectorstorage
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -48,18 +49,25 @@ func (a *activeResources) canHandleRequest(needRes Resources, wid WorkerID, call
 
 	// TODO: dedupe needRes.BaseMinMemory per task type (don't add if that task is already running)
 	minNeedMem := res.MemReserved + a.memUsedMin + needRes.MinMemory + needRes.BaseMinMemory
+	if caller == "autoTask" {
+		fmt.Printf("打印资源判断minNeedMem: %d, MemPhysical: %d\n", minNeedMem, res.MemPhysical)
+	}
 	if minNeedMem > res.MemPhysical {
 		log.Debugf("sched: not scheduling on worker %s for %s; not enough physical memory - need: %dM, have %dM", wid, caller, minNeedMem/mib, res.MemPhysical/mib)
 		return false
 	}
 
 	maxNeedMem := res.MemReserved + a.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
-
+	if caller == "autoTask" {
+		fmt.Printf("打印资源判断maxNeedMem: %d, MemPhysical: %d\n", minNeedMem, res.MemPhysical)
+	}
 	if maxNeedMem > res.MemSwap+res.MemPhysical {
 		log.Debugf("sched: not scheduling on worker %s for %s; not enough virtual memory - need: %dM, have %dM", wid, caller, maxNeedMem/mib, (res.MemSwap+res.MemPhysical)/mib)
 		return false
 	}
-
+	if caller == "autoTask" {
+		fmt.Printf("打印资源判断cpuUse: %d, needCpu: %d, res.Cpus: %d\n", a.cpuUse, needRes.Threads(res.CPUs), res.CPUs)
+	}
 	if a.cpuUse+needRes.Threads(res.CPUs) > res.CPUs {
 		log.Debugf("sched: not scheduling on worker %s for %s; not enough threads, need %d, %d in use, target %d", wid, caller, needRes.Threads(res.CPUs), a.cpuUse, res.CPUs)
 		return false

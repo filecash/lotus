@@ -175,7 +175,7 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 	}
 
 	accpeWorker := make([]WorkerID, 0)
-	needRes := ResourceTable[sealtasks.TTPreCommit1][abi.RegisteredSealProof_StackedDrg32GiBV1]
+	needRes := ResourceTable[sealtasks.TTPreCommit1][abi.RegisteredSealProof_StackedDrg16GiBV1]
 	sel := newAllocSelector(m.index, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, sealtasks.TTPreCommit1)
 	for _, w := range wList {
 		worker, ok := sh.workers[w]
@@ -192,7 +192,7 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 		if worker.active.canHandleRequest(needRes, w, "autoTask", worker.info.Resources) {
 			continue
 		}
-		ok, err := sel.Ok(ctx, sealtasks.TTPreCommit1, abi.RegisteredSealProof_StackedDrg32GiBV1, worker)
+		ok, err := sel.Ok(ctx, sealtasks.TTPreCommit1, abi.RegisteredSealProof_StackedDrg16GiBV1, worker)
 		if err != nil {
 			continue
 		}
