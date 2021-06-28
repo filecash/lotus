@@ -2,8 +2,6 @@ package sectorstorage
 
 import (
 	"context"
-	"fmt"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -57,7 +55,6 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 	if err != nil {
 		return false, xerrors.Errorf("finding best alloc storage: %w", err)
 	}
-	fmt.Println(best)
 	for _, info := range best {
 		if _, ok := have[info.ID]; ok {
 			return true, nil
