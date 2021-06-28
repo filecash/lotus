@@ -1,6 +1,7 @@
 package sectorstorage
 
 import (
+	"fmt"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"time"
@@ -189,7 +190,7 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 			continue
 		}
 
-		if worker.active.canHandleRequest(needRes, w, "autoTask", worker.info.Resources) {
+		if !worker.active.canHandleRequest(needRes, w, "autoTask", worker.info.Resources) {
 			continue
 		}
 		ok, err := sel.Ok(ctx, sealtasks.TTPreCommit1, abi.RegisteredSealProof_StackedDrg16GiBV1, worker)
