@@ -241,13 +241,8 @@ var autoTaskCmd = &cli.Command{
 					continue
 				}
 				isSched, err := mapi.TrySched(lcli.ReqContext(cctx), isSend.Group)
-				if err != nil {
+				if !isSched || err != nil {
 					log.Errorf("auto task TrySched failed: %w", err)
-					minerApiCloser()
-					continue
-				}
-				if !isSched {
-					log.Error("auto task TrySched is false")
 					minerApiCloser()
 					continue
 				}

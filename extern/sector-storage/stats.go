@@ -202,7 +202,7 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 		accpeWorker = append(accpeWorker, w)
 		break
 	}
-	if len(accpeWorker) > 0 {
+	if len(accpeWorker) < 1 {
 		return false, xerrors.Errorf("can not found worker to do")
 	}
 	return true, nil
