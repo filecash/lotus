@@ -153,7 +153,11 @@ func (m *Manager) DeleteSectorGroup(ctx context.Context, SectorNum string) error
 	return err
 }
 
-func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
+func (m *Manager) TrySched(ctx context.Context, group, sectorSize string) (bool, error) {
+	proofSize, err := getProofSize(sectorSize)
+	if err != nil {
+		return false, err
+	}
 	m.sched.workersLk.RLock()
 	defer m.sched.workersLk.RUnlock()
 	sh := m.sched
@@ -175,7 +179,7 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 	}
 
 	accpeWorker := make([]WorkerID, 0)
-	needRes := ResourceTable[sealtasks.TTPreCommit1][abi.RegisteredSealProof_StackedDrg16GiBV1]
+	needRes := ResourceTable[sealtasks.TTPreCommit1][proofSize]
 	sel := newAllocSelector(m.index, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, sealtasks.TTPreCommit1)
 	for _, w := range wList {
 		worker, ok := sh.workers[w]
@@ -192,7 +196,7 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 		if !worker.active.canHandleRequest(needRes, w, "autoTask", worker.info.Resources) {
 			continue
 		}
-		ok, err := sel.Ok(ctx, sealtasks.TTPreCommit1, abi.RegisteredSealProof_StackedDrg16GiBV1, worker)
+		ok, err := sel.Ok(ctx, sealtasks.TTPreCommit1, proofSize, worker)
 		if err != nil {
 			continue
 		}
@@ -206,4 +210,25 @@ func (m *Manager) TrySched(ctx context.Context, group string) (bool, error) {
 		return false, xerrors.Errorf("can not found worker to do")
 	}
 	return true, nil
+}
+
+func getProofSize(s string) (abi.RegisteredSealProof, error)  {
+	switch s {
+	case "2KiB":
+		return abi.RegisteredSealProof_StackedDrg2KiBV1, nil
+	case "8MiB":
+		return abi.RegisteredSealProof_StackedDrg8MiBV1, nil
+	case "512MiB":
+		return abi.RegisteredSealProof_StackedDrg512MiBV1, nil
+	case "4GiB":
+		return abi.RegisteredSealProof_StackedDrg4GiBV1, nil
+	case "16GiB":
+		return abi.RegisteredSealProof_StackedDrg16GiBV1, nil
+	case "32GiB":
+		return abi.RegisteredSealProof_StackedDrg32GiBV1, nil
+	case "64GiB":
+		return abi.RegisteredSealProof_StackedDrg64GiBV1, nil
+	default:
+		return abi.RegisteredSealProof(-1), xerrors.New("proof not found")
+	}
 }

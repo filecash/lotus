@@ -117,8 +117,8 @@ func (sm *StorageMinerAPI) DeleteSectorGroup(ctx context.Context, SectorNum stri
 	return sm.StorageMgr.DeleteSectorGroup(ctx, SectorNum)
 }
 
-func (sm *StorageMinerAPI) TrySched(ctx context.Context, group string) (bool, error) {
-	return sm.StorageMgr.TrySched(ctx, group)
+func (sm *StorageMinerAPI) TrySched(ctx context.Context, group, sectorSize string) (bool, error) {
+	return sm.StorageMgr.TrySched(ctx, group, sectorSize)
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {

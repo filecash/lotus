@@ -366,7 +366,7 @@ type StorageMinerStruct struct {
 		SetWorkerParam func(ctx context.Context, worker string, key string, value string) error `perm:"admin"`
 		UpdateSectorGroup func(ctx context.Context, SectorNum string, group string) error `perm:"admin"`
 		DeleteSectorGroup func(ctx context.Context, SectorNum string) error `perm:"admin"`
-		TrySched func(ctx context.Context, group string) (bool, error) `perm:"admin"`
+		TrySched func(ctx context.Context, group, sectorSize string) (bool, error) `perm:"admin"`
 
 		SealingSchedDiag                       func(context.Context, bool) (interface{}, error)                  `perm:"admin"`
 		DealsImportData                        func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
@@ -1496,8 +1496,8 @@ func (c *StorageMinerStruct) DeleteSectorGroup(ctx context.Context, SectorNum st
 	return c.Internal.DeleteSectorGroup(ctx, SectorNum)
 }
 
-func (c *StorageMinerStruct) TrySched(ctx context.Context, group string) (bool, error) {
-	return c.Internal.TrySched(ctx, group)
+func (c *StorageMinerStruct) TrySched(ctx context.Context, group, sectorSize string) (bool, error) {
+	return c.Internal.TrySched(ctx, group, sectorSize)
 }
 
 func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {

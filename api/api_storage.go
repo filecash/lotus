@@ -93,7 +93,7 @@ type StorageMiner interface {
 	SetWorkerParam(ctx context.Context, worker string, key string, value string) error
 	UpdateSectorGroup(ctx context.Context, SectorNum string, group string) error
 	DeleteSectorGroup(ctx context.Context, SectorNum string) error
-	TrySched(ctx context.Context, group string) (bool, error)
+	TrySched(ctx context.Context, group, sectorSize string) (bool, error)
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error)
 	SealingAbort(ctx context.Context, call storiface.CallID) error

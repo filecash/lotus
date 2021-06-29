@@ -240,7 +240,7 @@ var autoTaskCmd = &cli.Command{
 					log.Errorf("auto task connect miner failed: %w", err)
 					continue
 				}
-				isSched, err := mapi.TrySched(lcli.ReqContext(cctx), isSend.Group)
+				isSched, err := mapi.TrySched(lcli.ReqContext(cctx), isSend.Group, mInfo.SectorSize.ShortString())
 				if !isSched || err != nil {
 					log.Errorf("auto task TrySched failed: %w", err)
 					minerApiCloser()
