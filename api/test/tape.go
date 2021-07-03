@@ -75,7 +75,7 @@ func testTapeFix(t *testing.T, b APIBuilder, blocktime time.Duration, after bool
 		<-done
 	}()
 
-	err = miner.PledgeSector(ctx)
+	err = miner.PledgeSector(ctx, "")
 	require.NoError(t, err)
 
 	// Wait till done.

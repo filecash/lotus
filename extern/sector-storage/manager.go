@@ -46,14 +46,11 @@ type Worker interface {
 	Close() error
 
 	AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error)
-	GetWorkerInfo(ctx context.Context) WorkerInfo
+	GetWorkerInfo(ctx context.Context) storiface.WorkerParams
 	AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error
 	DeleteStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error
 	SetWorkerParams(ctx context.Context, key string, val string) error
 	GetWorkerGroup(ctx context.Context) string
-	GetTaskCount(ctx context.Context) int32
-	SetID(ctx context.Context, ID uuid.UUID) error
-	GetID(ctx context.Context) uuid.UUID
 }
 
 type SectorManager interface {
@@ -343,7 +340,7 @@ func (m *Manager) NewSector(ctx context.Context, sector storage.SectorRef) error
 	return nil
 }
 
-func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader, group string) (abi.PieceInfo, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -360,7 +357,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 	}
 
 	var out abi.PieceInfo
-	err = m.sched.Schedule(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
+	err = m.sched.ScheduleExt(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
 		p, err := m.waitSimpleCall(ctx)(w.AddPiece(ctx, sector, existingPieces, sz, r))
 		if err != nil {
 			return err
@@ -369,7 +366,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 			out = p.(abi.PieceInfo)
 		}
 		return nil
-	})
+	}, group)
 
 	return out, err
 }

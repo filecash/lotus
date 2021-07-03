@@ -54,10 +54,22 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 	wid := WorkerID(sessID)
 
 	sh.workersLk.Lock()
+
+	{
+		_, exist := sh.execGroupList.list[info.Group]
+		if exist {
+			sh.execGroupList.list[info.Group] = append(sh.execGroupList.list[info.Group], wid)
+		}else {
+			l := make([]WorkerID, 0)
+			l = append(l, wid)
+			sh.execGroupList.list[info.Group] = l
+		}
+		worker.isDeleteGroup = false
+	}
+
 	_, exist := sh.workers[wid]
 	if exist {
 		log.Warnw("duplicated worker added", "id", wid)
-		sh.workersLk.Unlock()
 		// this is ok, we're already handling this worker in a different goroutine
 		sh.workersLk.Unlock()
 		return nil
@@ -174,6 +186,7 @@ func (sw *schedWorker) handleWorker() {
 
 func (sw *schedWorker) disable(ctx context.Context) error {
 	done := make(chan struct{})
+	sw.sched.deleteGroupListWithWorker(sw.worker.info.Group ,sw.wid)
 
 	// request cleanup in the main scheduler goroutine
 	select {
@@ -395,7 +408,16 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 	needRes := ResourceTable[req.taskType][req.sector.ProofType]
 
 	sh.execSectorWorker.lk.Lock()
-	sh.execSectorWorker.group[req.sector.ID] = w.workerRpc.GetWorkerGroup(req.ctx)
+	group, isExist := sh.execSectorWorker.group[req.sector.ID.Number.String()]
+	workerGroup := w.workerRpc.GetWorkerGroup(req.ctx)
+	if !isExist || group != workerGroup {
+		sh.execSectorWorker.group[req.sector.ID.Number.String()] = workerGroup
+		err := sh.updateSectorGroupFile()
+		if err != nil {
+			sh.execSectorWorker.lk.Unlock()
+			return err
+		}
+	}
 	sh.execSectorWorker.lk.Unlock()
 
 	w.lk.Lock()
@@ -409,7 +431,6 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 
 		if err != nil {
 			_ = w.workerRpc.DeleteStore(req.ctx, req.sector.ID, req.taskType)
-			w.deleteTask(req.taskType)
 			
 			w.lk.Lock()
 			w.preparing.free(w.info.Resources, needRes)
@@ -462,12 +483,12 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 		})
 
 		if req.taskType == sealtasks.TTFetch {
+			log.Warnf("delete taskgroup map, sectorID: %v, taskType: %s\n", req.sector, req.taskType)
 			sh.execSectorWorker.lk.Lock()
-			delete(sh.execSectorWorker.group, req.sector.ID)
+			delete(sh.execSectorWorker.group, req.sector.ID.Number.String())
+			_ = sh.updateSectorGroupFile()
 			sh.execSectorWorker.lk.Unlock()
 		}
-
-		w.deleteTask(req.taskType)
 
 		sh.workersLk.Unlock()
 
@@ -508,4 +529,28 @@ func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
 
 		log.Debugf("worker %s dropped", wid)
 	}
+}
+
+func (sh *scheduler) deleteGroupListWithWorker(group string,wid WorkerID)  {
+	if sh.workers[wid].isDeleteGroup {
+		return
+	}
+	sh.execGroupList.lk.Lock()
+	defer sh.execGroupList.lk.Unlock()
+	list, exsit := sh.execGroupList.list[group]
+	if !exsit {
+		return
+	}
+	for i, w := range list {
+		if w == wid {
+			l := append(list[:i], list[i+1:]...)
+			if len(l) > 0 {
+				sh.execGroupList.list[group] = l
+			}else {
+				delete(sh.execGroupList.list, group)
+			}
+			break
+		}
+	}
+	sh.workers[wid].isDeleteGroup = true
 }

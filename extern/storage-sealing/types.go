@@ -71,6 +71,8 @@ type SectorInfo struct {
 
 	SectorType abi.RegisteredSealProof
 
+	Group string
+
 	// Packing
 	Pieces []Piece
 

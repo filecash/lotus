@@ -253,7 +253,7 @@ func (m *Sealing) addPiece(ctx context.Context, sectorID abi.SectorNumber, size 
 		return err
 	}
 
-	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sp, sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r)
+	ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx, DealSectorPriority), m.minerSector(sp, sectorID), m.unsealedInfoMap.infos[sectorID].pieceSizes, size, r, "")
 	if err != nil {
 		return xerrors.Errorf("writing piece: %w", err)
 	}
@@ -461,17 +461,18 @@ func (m *Sealing) newDealSector(ctx context.Context) (abi.SectorNumber, abi.Sect
 }
 
 // newSectorCC accepts a slice of pieces with no deal (junk data)
-func (m *Sealing) newSectorCC(ctx context.Context, sid abi.SectorNumber, pieces []Piece) error {
+func (m *Sealing) newSectorCC(ctx context.Context, sid abi.SectorNumber, pieces []Piece, group string) error {
 	spt, err := m.currentSealProof(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting current seal proof type: %w", err)
 	}
 
 	log.Infof("Creating CC sector %d", sid)
-	return m.sectors.Send(uint64(sid), SectorStartCC{
+	return m.sectors.Send(uint64(sid), SectorStartCustom{
 		ID:         sid,
 		Pieces:     pieces,
 		SectorType: spt,
+		Group: group,
 	})
 }
 

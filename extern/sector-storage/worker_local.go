@@ -46,6 +46,7 @@ type WorkerConfig struct {
 	PreCommit1Max int64
 	PreCommit2Max int64
 	CommitMax     int64
+	ApP1max       int64
 	Group         string
 }
 
@@ -59,9 +60,11 @@ type LocalWorker struct {
 	ret        storiface.WorkerReturn
 	executor   ExecutorFunc
 	noSwap     bool
+	apP1Share  bool
 
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
+	autoTaskLimit map[string]int64
 	running     sync.WaitGroup
 	lk          sync.Mutex
 
@@ -75,31 +78,20 @@ type LocalWorker struct {
 	preCommit1Now int64
 	preCommit2Max int64
 	preCommit2Now int64
-	commitMax     int64
-	commitNow     int64
-	group         string
+	commit1Max    int64
+	commit1Now    int64
+	commit2Max    int64
+	commit2Now    int64
+	apAndP1Max    int64
+	apAndP1Now    int64
 	storeList     taskList
 
-	taskCount int32
+	group string
 	ID        uuid.UUID
 }
 
 type taskList struct {
 	list map[abi.SectorID]string
-}
-
-type WorkerInfo struct {
-	AddPieceMax   int64
-	AddPieceNow   int64
-	PreCommit1Max int64
-	PreCommit1Now int64
-	PreCommit2Max int64
-	PreCommit2Now int64
-	CommitMax     int64
-	CommitNow     int64
-	Group         string
-	StoreList     map[string]string
-	AcceptTasks   []string
 }
 
 func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
@@ -122,8 +114,8 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 			st: cst,
 		},
 		acceptTasks: acceptTasks,
+		autoTaskLimit: make(map[string]int64),
 		executor:    executor,
-		taskCount:   0,
 		noSwap:      wcfg.NoSwap,
 
 		session: uuid.New(),
@@ -131,7 +123,9 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 		addPieceMax:   wcfg.AddPieceMax,
 		preCommit1Max: wcfg.PreCommit1Max,
 		preCommit2Max: wcfg.PreCommit2Max,
-		commitMax:     wcfg.CommitMax,
+		commit1Max:    wcfg.CommitMax,
+		commit2Max:    wcfg.CommitMax,
+		apAndP1Max:    wcfg.ApP1max,
 		group:         wcfg.Group,
 		storeList: taskList{
 			list: make(map[abi.SectorID]string),
@@ -366,20 +360,12 @@ func (l *LocalWorker) AddPiece(ctx context.Context, sector storage.SectorRef, ep
 	}
 
 	return l.asyncCall(ctx, sector, AddPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
-		return sb.AddPiece(ctx, sector, epcs, sz, r)
+		return sb.AddPiece(ctx, sector, epcs, sz, r, "")
 	})
 }
 
 func (l *LocalWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, Fetch, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, storiface.FTNone, ptype)
 		if err == nil {
 			done()
@@ -407,10 +393,6 @@ func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storage.SectorR
 		if err != nil {
 			return nil, err
 		}
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		return sb.SealPreCommit1(ctx, sector, ticket, pieces)
 	})
 }
@@ -422,11 +404,6 @@ func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storage.SectorR
 	}
 
 	return l.asyncCall(ctx, sector, SealPreCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
-
 		return sb.SealPreCommit2(ctx, sector, phase1Out)
 	})
 }
@@ -438,10 +415,6 @@ func (l *LocalWorker) SealCommit1(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, SealCommit1, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		return sb.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 	})
 }
@@ -453,10 +426,6 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, SealCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		return sb.SealCommit2(ctx, sector, phase1Out)
 	})
 }
@@ -468,10 +437,6 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storage.SectorR
 	}
 
 	return l.asyncCall(ctx, sector, FinalizeSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
 			return nil, xerrors.Errorf("finalizing sector: %w", err)
 		}
@@ -492,10 +457,6 @@ func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storage.Sector
 
 func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	var err error
-	atomic.AddInt32(&l.taskCount, 1)
-	defer func() {
-		atomic.AddInt32(&l.taskCount, -1)
-	}()
 	if rerr := l.storage.Remove(ctx, sector, storiface.FTSealed, true); rerr != nil {
 		err = multierror.Append(err, xerrors.Errorf("removing sector (sealed): %w", rerr))
 	}
@@ -511,10 +472,6 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, MoveStorage, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		return nil, l.storage.MoveStorage(ctx, sector, types)
 	})
 }
@@ -526,10 +483,6 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 	}
 
 	return l.asyncCall(ctx, sector, UnsealPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
 		if err = sb.UnsealPiece(ctx, sector, index, size, randomness, cid); err != nil {
 			return nil, xerrors.Errorf("unsealing sector: %w", err)
 		}
@@ -553,11 +506,6 @@ func (l *LocalWorker) ReadPiece(ctx context.Context, writer io.Writer, sector st
 	}
 
 	return l.asyncCall(ctx, sector, ReadPiece, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		atomic.AddInt32(&l.taskCount, 1)
-		defer func() {
-			atomic.AddInt32(&l.taskCount, -1)
-		}()
-
 		return sb.ReadPiece(ctx, writer, sector, index, size)
 	})
 }
@@ -624,6 +572,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,
 		},
+		Group: l.group,
 	}, nil
 }
 
@@ -684,14 +633,26 @@ func (l *LocalWorker) addRange(ctx context.Context, task sealtasks.TaskType, act
 	switch task {
 	case sealtasks.TTAddPiece:
 		if act == StartTask {
+			if l.apP1Share {
+				l.apAndP1Now++
+			}
 			l.addPieceNow++
 		} else {
+			if l.apP1Share {
+				l.apAndP1Now--
+			}
 			l.addPieceNow--
 		}
 	case sealtasks.TTPreCommit1:
 		if act == StartTask {
+			if l.apP1Share {
+				l.apAndP1Now++
+			}
 			l.preCommit1Now++
 		} else {
+			if l.apP1Share {
+				l.apAndP1Now--
+			}
 			l.preCommit1Now--
 		}
 	case sealtasks.TTPreCommit2:
@@ -700,11 +661,17 @@ func (l *LocalWorker) addRange(ctx context.Context, task sealtasks.TaskType, act
 		} else {
 			l.preCommit2Now--
 		}
-	case sealtasks.TTCommit1, sealtasks.TTCommit2:
+	case sealtasks.TTCommit1:
 		if act == StartTask {
-			l.commitNow++
+			l.commit1Now++
 		} else {
-			l.commitNow--
+			l.commit1Now--
+		}
+	case sealtasks.TTCommit2:
+		if act == StartTask {
+			l.commit2Now++
+		} else {
+			l.commit2Now--
 		}
 	}
 
@@ -742,10 +709,17 @@ func (l *LocalWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTyp
 				return false, nil
 			}
 		}
-	case sealtasks.TTCommit1, sealtasks.TTCommit2:
-		if l.commitMax > 0 {
-			if l.commitNow >= l.commitMax {
-				log.Debugf("this task is over range, task: TTCommit1, max: %v, now: %v", l.commitMax, l.commitNow)
+	case sealtasks.TTCommit1:
+		if l.commit1Max > 0 {
+			if l.commit1Now >= l.commit1Max {
+				log.Debugf("this task is over range, task: TTCommit1, max: %d, now: %d", l.commit1Max, l.commit1Now)
+				return false, nil
+			}
+		}
+	case sealtasks.TTCommit2:
+		if l.commit2Max > 0 {
+			if l.commit2Now >= l.commit2Max {
+				log.Debugf("this task is over range, task: TTCommit2, max: %d, now: %d", l.commit2Max, l.commit2Now)
 				return false, nil
 			}
 		}
@@ -753,7 +727,8 @@ func (l *LocalWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTyp
 
 	return true, nil
 }
-func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
+
+func (l *LocalWorker) GetWorkerInfo(ctx context.Context) storiface.WorkerParams {
 	task := make([]string, 0)
 
 	l.lk.Lock()
@@ -765,15 +740,20 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
 
 	sort.Strings(task)
 
-	workerInfo := WorkerInfo{
+	workerInfo := storiface.WorkerParams{
+		ApP1Share:     l.apP1Share,
 		AddPieceMax:   l.addPieceMax,
 		AddPieceNow:   l.addPieceNow,
 		PreCommit1Max: l.preCommit1Max,
 		PreCommit1Now: l.preCommit1Now,
 		PreCommit2Max: l.preCommit2Max,
 		PreCommit2Now: l.preCommit2Now,
-		CommitMax:     l.commitMax,
-		CommitNow:     l.commitNow,
+		Commit1Max:    l.commit1Max,
+		Commit1Now:    l.commit1Now,
+		Commit2Max:    l.commit2Max,
+		Commit2Now:    l.commit2Now,
+		ApAndP1Max:    l.apAndP1Max,
+		ApAndP1Now:    l.apAndP1Now,
 		AcceptTasks:   task,
 		Group:         l.group,
 	}
@@ -787,6 +767,7 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) WorkerInfo {
 
 	return workerInfo
 }
+
 func (l *LocalWorker) AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
 	l.lk.Lock()
 	defer l.lk.Unlock()
@@ -794,6 +775,7 @@ func (l *LocalWorker) AddStore(ctx context.Context, ID abi.SectorID, taskType se
 	l.storeList.list[ID] = sealtasks.TaskMean[taskType]
 	return nil
 }
+
 func (l *LocalWorker) DeleteStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error {
 	l.lk.Lock()
 	defer l.lk.Unlock()
@@ -826,9 +808,65 @@ func (l *LocalWorker) SetWorkerParams(ctx context.Context, key string, val strin
 		if err != nil {
 			return xerrors.Errorf("key is error, string to int failed: %w", err)
 		}
-		l.commitMax = param
+		l.commit1Max = param
+		l.commit2Max = param
 	case "group":
 		l.group = val
+	case "app1max":
+		l.lk.Lock()
+		defer l.lk.Unlock()
+		param, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return xerrors.Errorf("key is error, string to int failed: %w", err)
+		}
+		if param > 0 {
+			l.apAndP1Max = param
+			l.apAndP1Now = l.addPieceNow + l.preCommit1Now
+		} else {
+			l.apAndP1Max = 0
+			l.apAndP1Now = 0
+			l.apP1Share = false
+		}
+	case "autotaskapp1":
+		l.lk.Lock()
+		defer l.lk.Unlock()
+		param, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return xerrors.Errorf("key is error, string to int failed: %w", err)
+		}
+		if err := l.setAutoTaskParam("app1", param); err != nil {
+			return err
+		}
+	case "autotaskp2":
+		l.lk.Lock()
+		defer l.lk.Unlock()
+		param, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return xerrors.Errorf("key is error, string to int failed: %w", err)
+		}
+		if err := l.setAutoTaskParam("p2", param); err != nil {
+			return err
+		}
+	case "autotaskc1":
+		l.lk.Lock()
+		defer l.lk.Unlock()
+		param, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return xerrors.Errorf("key is error, string to int failed: %w", err)
+		}
+		if err := l.setAutoTaskParam("c1", param); err != nil {
+			return err
+		}
+	case "autotaskc2":
+		l.lk.Lock()
+		defer l.lk.Unlock()
+		param, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return xerrors.Errorf("key is error, string to int failed: %w", err)
+		}
+		if err := l.setAutoTaskParam("c2", param); err != nil {
+			return err
+		}
 	default:
 		return xerrors.Errorf("this param is not fount: %s", key)
 	}
@@ -839,29 +877,86 @@ func (l *LocalWorker) GetWorkerGroup(ctx context.Context) string {
 	return l.group
 }
 
-func (l *LocalWorker) GetTaskCount(ctx context.Context) int32 {
-	return atomic.LoadInt32(&l.taskCount)
-}
-
-func (l *LocalWorker) SetID(ctx context.Context, ID uuid.UUID) error {
-	l.lk.Lock()
-	defer l.lk.Unlock()
-	copy(l.ID[:], ID[:])
+func (l *LocalWorker) AddAutoTaskLimit(ctx context.Context, limit map[string]int64) error {
+	for k, v := range limit {
+		if err := l.setAutoTaskParam(k, v); err != nil{
+			return err
+		}
+		continue
+	}
 	return nil
 }
 
-func (l *LocalWorker) GetID(ctx context.Context) uuid.UUID {
-	l.lk.Lock()
-	defer l.lk.Unlock()
-	var id uuid.UUID
-	copy(id[:], l.ID[:])
-	return id
+func (l *LocalWorker) AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn {
+	isSend := true
+	for t, c := range l.autoTaskLimit {
+		switch t {
+		case "app1":
+			if l.apP1Share {
+				if l.addPieceNow + l.preCommit1Now >= c {
+					log.Debugf("addPieceNow: %d, preCommit1Now: %d, autoTaskLimit: %d, return: false",l.addPieceNow, l.preCommit1Now, l.autoTaskLimit["app1"])
+					isSend = false
+					break
+				}
+			} else {
+				if l.preCommit1Now >= c {
+					log.Debugf("addPieceNow: %d, preCommit1Now: %d, autoTaskLimit: %d, return: false",l.addPieceNow, l.preCommit1Now, l.autoTaskLimit["app1"])
+					isSend = false
+					break
+				}
+			}
+
+		case "p2":
+			if l.preCommit2Now >= c {
+				isSend = false
+				break
+			}
+		case "c1":
+			if l.commit1Now >= c {
+				isSend = false
+				break
+			}
+		case "c2":
+			if l.commit2Now >= c {
+				isSend = false
+				break
+			}
+		}
+	}
+	return storiface.AutoTaskReturn{
+		IsSend: isSend,
+		Group: l.group,
+	}
 }
 
-func (l *LocalWorker) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return xerrors.Errorf("not supported at this layer")
-}
-
-func (l *LocalWorker) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return -1
+func (l *LocalWorker) setAutoTaskParam (taskType string, value int64) error {
+	switch taskType {
+	case "app1":
+		if l.apP1Share {
+			if l.apAndP1Max != 0 && l.apAndP1Max < value {
+				return xerrors.New("ap AND p1 max share, apAndP1Max can not less than app1")
+			}
+		}else {
+			if l.preCommit1Max != 0 && l.preCommit1Max < value {
+				return xerrors.New("ap AND p1 max not share, preCommit1Max can not less than app1")
+			}
+		}
+		l.autoTaskLimit["app1"] = value
+	case "p2":
+		if l.preCommit2Max != 0 && l.preCommit2Max < value {
+			return xerrors.New("preCommit2Max can not less than p2")
+		}
+		l.autoTaskLimit["p2"] = value
+	case "c1":
+		if l.commit1Max > 0 && l.commit1Max < value {
+			return xerrors.New("commit1Max can not less than c1")
+		}
+		l.autoTaskLimit["c1"] = value
+	case "c2":
+		if l.commit2Max > 0 && l.commit2Max < value {
+			return xerrors.New("commit2Max can not less than c1")
+		}
+		l.autoTaskLimit["c2"] = value
+	}
+	return nil
 }
