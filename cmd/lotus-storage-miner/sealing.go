@@ -124,10 +124,15 @@ var sealingWorkersCmd = &cli.Command{
 				fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))
 			}
 			if _, ok := Info[stat.id.String()]; ok {
-				fmt.Printf("\tGroup: %v\n", color.RedString(Info[stat.id.String()].Group))
+				fmt.Printf("\tGroup: %v", color.RedString(Info[stat.id.String()].Group))
+				if Info[stat.id.String()].ApP1Share {
+					fmt.Printf("\tApP1Share: %v\n", color.GreenString("true"))
+				}else {
+					fmt.Printf("\n")
+				}
 				fmt.Printf("\tAcceptTasks: %v\n", Info[stat.id.String()].AcceptTasks)
-				fmt.Printf("\tAddPieceMax: %d\tPreCommit1Max: %d\tPreCommit2Max: %d\tCommitMax: %d\n", Info[stat.id.String()].AddPieceMax, Info[stat.id.String()].PreCommit1Max, Info[stat.id.String()].PreCommit2Max, Info[stat.id.String()].CommitMax)
-				fmt.Printf("\tAddPieceNow: %d\tPreCommit1Now: %d\tPreCommit2Now: %d\tCommitNow: %d\n", Info[stat.id.String()].AddPieceNow, Info[stat.id.String()].PreCommit1Now, Info[stat.id.String()].PreCommit2Now, Info[stat.id.String()].CommitNow)
+				fmt.Printf("\tAP_P1_Max: %d\tAP_Max: %d\tPC1_Max: %d\tPC2_Max: %d\tC1_Max: %d\tC2_Max: %d\n", Info[stat.id.String()].ApAndP1Max, Info[stat.id.String()].AddPieceMax, Info[stat.id.String()].PreCommit1Max, Info[stat.id.String()].PreCommit2Max, Info[stat.id.String()].Commit1Max, Info[stat.id.String()].Commit2Max)
+				fmt.Printf("\tAP_P1_Use: %d\tAP_Use: %d\tPC1_Use: %d\tPC2_Use: %d\tC1_Use: %d\tC2_Use: %d\n", Info[stat.id.String()].ApAndP1Now, Info[stat.id.String()].AddPieceNow, Info[stat.id.String()].PreCommit1Now, Info[stat.id.String()].PreCommit2Now, Info[stat.id.String()].Commit1Now, Info[stat.id.String()].Commit2Now)
 				for ID, task := range Info[stat.id.String()].StoreList {
 					fmt.Printf("\tProcessing: %s \t%s\n", color.BlueString(ID), color.RedString(task))
 				}
