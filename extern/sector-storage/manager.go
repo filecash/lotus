@@ -780,20 +780,4 @@ func (m *Manager) Close(ctx context.Context) error {
 	return m.sched.Close(ctx)
 }
 
-func (m *Manager) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	w := m.sched.workers[WorkerID(ID)]
-	if w == nil {
-		return xerrors.Errorf("Worker ID is not found,id:%s", ID.String())
-	}
-	return w.AddTask(ctx)
-}
-
-func (m *Manager) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	w := m.sched.workers[WorkerID(ID)]
-	if w == nil {
-		return -1
-	}
-	return w.GetWorkerWait()
-}
-
 var _ SectorManager = &Manager{}
