@@ -10,8 +10,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/google/uuid"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
@@ -57,7 +55,7 @@ func (r *remoteWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTy
 	return r.WorkerAPI.AllowableRange(ctx, task)
 }
 
-func (r *remoteWorker) GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo {
+func (r *remoteWorker) GetWorkerInfo(ctx context.Context) storiface.WorkerParams {
 	return r.WorkerAPI.GetWorkerInfo(ctx)
 }
 
