@@ -595,6 +595,10 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		panic(err)
 	}
 
+	if env, ok := os.LookupEnv("WORKER_NAME"); ok {
+		hostname = hostname + "-" + env
+	}
+	
 	gpus, err := ffi.GetGPUDevices()
 	if err != nil {
 		log.Errorf("getting gpu devices failed: %+v", err)

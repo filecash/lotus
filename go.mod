@@ -116,6 +116,7 @@ require (
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/moran666666/sector-counter v0.0.0-20200819122504-72fe8e09bf44
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multiaddr-dns v0.2.0
@@ -158,3 +159,5 @@ replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v
 replace github.com/filecoin-project/filecoin-ffi => ../filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/moran666666/sector-counter => ./extern/sector-counter

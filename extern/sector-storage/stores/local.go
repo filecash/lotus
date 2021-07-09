@@ -414,7 +414,7 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 			continue
 		}
 
-		si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
+		si, err := st.CheckDeclareSector(ctx, sid.ID, fileType, ssize, pathType)
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
@@ -671,3 +671,27 @@ func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 }
 
 var _ Store = &Local{}
+
+func (st *Local) CheckDeclareSector(ctx context.Context, sid abi.SectorID, fileType storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]SectorStorageInfo, error) {
+	si0, err := st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
+	if len(si0) > 0 || err != nil {
+		return si0, err
+	}
+	if pathType == storiface.PathStorage {
+		for id, path := range st.paths {
+			if sstInfo, err := st.index.StorageInfo(ctx, id); err == nil {
+				if sstInfo.CanStore {
+					p := filepath.Join(path.local, fileType.String(), storiface.SectorName(sid))
+					_, err := os.Stat(p)
+					if os.IsNotExist(err) || err != nil {
+						continue
+					}
+					if err := st.index.StorageDeclareSector(ctx, id, sid, fileType, sstInfo.CanStore); err != nil {
+						continue
+					}
+				}
+			}
+		}
+	}
+	return st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
+}
