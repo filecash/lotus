@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"net/http"
 
 	"golang.org/x/xerrors"
@@ -9,8 +10,6 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/google/uuid"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
@@ -56,7 +55,7 @@ func (r *remoteWorker) AllowableRange(ctx context.Context, task sealtasks.TaskTy
 	return r.WorkerAPI.AllowableRange(ctx, task)
 }
 
-func (r *remoteWorker) GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo {
+func (r *remoteWorker) GetWorkerInfo(ctx context.Context) storiface.WorkerParams {
 	return r.WorkerAPI.GetWorkerInfo(ctx)
 }
 
@@ -76,24 +75,12 @@ func (r *remoteWorker) GetWorkerGroup(ctx context.Context) string {
 	return r.WorkerAPI.GetWorkerGroup(ctx)
 }
 
-func (r *remoteWorker) GetTaskCount(ctx context.Context) int32 {
-	return r.WorkerAPI.GetTaskCount(ctx)
+func (r *remoteWorker) AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error {
+	return r.WorkerAPI.AddAutoTaskLimit(ctx, lim)
 }
 
-func (r *remoteWorker) SetID(ctx context.Context, ID uuid.UUID) error {
-	return r.WorkerAPI.SetID(ctx, ID)
-}
-
-func (r *remoteWorker) GetID(ctx context.Context) uuid.UUID {
-	return r.WorkerAPI.GetID(ctx)
-}
-
-func (r *remoteWorker) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return r.WorkerAPI.AddWorkerTask(ctx, ID)
-}
-
-func (r *remoteWorker) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return r.WorkerAPI.GetWorkerWait(ctx, ID)
+func (r *remoteWorker) AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn {
+	return r.WorkerAPI.AutoTaskLimit(ctx)
 }
 
 var _ sectorstorage.Worker = &remoteWorker{}

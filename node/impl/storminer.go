@@ -101,12 +101,24 @@ func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uuid.UUID][]stor
 	return sm.StorageMgr.WorkerJobs(), nil
 }
 
-func (sm *StorageMinerAPI) GetWorker(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error) {
+func (sm *StorageMinerAPI) GetWorker(ctx context.Context) (map[string]storiface.WorkerParams, error) {
 	return sm.StorageMgr.GetWorker(ctx), nil
 }
 
 func (sm *StorageMinerAPI) SetWorkerParam(ctx context.Context, worker string, key string, value string) error {
 	return sm.StorageMgr.SetWorkerParam(ctx, worker, key, value)
+}
+
+func (sm *StorageMinerAPI) UpdateSectorGroup(ctx context.Context, SectorNum string, group string) error {
+	return sm.StorageMgr.UpdateSectorGroup(ctx, SectorNum, group)
+}
+
+func (sm *StorageMinerAPI) DeleteSectorGroup(ctx context.Context, SectorNum string) error {
+	return sm.StorageMgr.DeleteSectorGroup(ctx, SectorNum)
+}
+
+func (sm *StorageMinerAPI) TrySched(ctx context.Context, group, sectorSize string) (bool, error) {
+	return sm.StorageMgr.TrySched(ctx, group, sectorSize)
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
@@ -129,12 +141,8 @@ func (sm *StorageMinerAPI) ActorSectorSize(ctx context.Context, addr address.Add
 	return mi.SectorSize, nil
 }
 
-func (sm *StorageMinerAPI) PledgeSector(ctx context.Context) error {
-	return sm.Miner.PledgeSector()
-}
-
-func (sm *StorageMinerAPI) PledgeSectorToWorker(ctx context.Context, ID uuid.UUID) error {
-	return sm.Miner.PledgeSectorToWorker(ID)
+func (sm *StorageMinerAPI) PledgeSector(ctx context.Context, group string) error {
+	return sm.Miner.PledgeSector(ctx, group)
 }
 
 func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
@@ -674,14 +682,6 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 
 func (sm *StorageMinerAPI) ActorAddressConfig(ctx context.Context) (api.AddressConfig, error) {
 	return sm.AddrSel.AddressConfig, nil
-}
-
-func (sm *StorageMinerAPI) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return sm.StorageMgr.AddWorkerTask(ctx, ID)
-}
-
-func (sm *StorageMinerAPI) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return sm.StorageMgr.GetWorkerWait(ctx, ID)
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

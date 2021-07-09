@@ -7,11 +7,9 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
-	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -42,96 +40,14 @@ var sectorsCmd = &cli.Command{
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
 		sectorsCapacityCollateralCmd,
-		autoTaskCmd,
-	},
-}
-
-var autoTaskCmd = &cli.Command{
-	Name:  "autotask",
-	Usage: "Start auto pledge sector task ",
-	Flags: []cli.Flag{
-		&cli.Int64Flag{
-			Name:  "count",
-			Usage: "auto task run parallel p1 count",
-			Value: 1,
-		},
-		&cli.Int64Flag{
-			Name:  "delay",
-			Usage: "auto task delay",
-			Value: 30,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		log.Info("Starting auto  pledge sector task")
-
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		ctx := lcli.ReqContext(cctx)
-
-		fmt.Print("CLI version: ")
-		cli.VersionPrinter(cctx)
-		fmt.Println()
-
-		count := cctx.Int("count")
-		delay := cctx.Int("delay")
-		sigs := make(chan os.Signal, 1)
-
-		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-		go func() {
-			<-sigs
-			os.Exit(0)
-		}()
-
-		for {
-			waitTask := 0
-			list, err := nodeApi.SectorsList(ctx)
-
-			for _, s := range list {
-				st, err := nodeApi.SectorsStatus(ctx, s, true)
-				if err != nil {
-					fmt.Println("id:", s, "err:", err)
-					continue
-				}
-
-				if st.State == api.SectorState(sealing.PreCommit1) {
-					waitTask++
-				}
-			}
-
-			Infos, err := nodeApi.GetWorker(ctx)
-			if err != nil {
-				return err
-			}
-
-			for _, workerInfo := range Infos {
-				waitTask += int(workerInfo.AddPieceNow)
-			}
-
-			fmt.Printf("p1 task wait count: %d, set p1 count: %d\n", waitTask, count)
-			fmt.Println()
-
-			for i := waitTask; i < count; i++ {
-				err = nodeApi.PledgeSector(ctx)
-				if err != nil {
-					return xerrors.Errorf("pledge sector to worker: %w", err)
-				}
-			}
-
-			time.Sleep(time.Duration(delay) * time.Second)
-		}
-
-		return nil
+		sectorsUpdateGroupCmd,
 	},
 }
 
 var sectorsPledgeCmd = &cli.Command{
 	Name:  "pledge",
 	Usage: "store random data in a sector",
+	ArgsUsage: "[<groupName> (optional)]",
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -140,7 +56,11 @@ var sectorsPledgeCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		return nodeApi.PledgeSector(ctx)
+		group := ""
+		if cctx.Args().Present() {
+			group = cctx.Args().First()
+		}
+		return nodeApi.PledgeSector(ctx, group)
 	},
 }
 
@@ -631,7 +551,14 @@ var sectorsRemoveCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
-		return nodeApi.SectorRemove(ctx, abi.SectorNumber(id))
+		if err := nodeApi.SectorRemove(ctx, abi.SectorNumber(id)); err != nil {
+			return  err
+		}
+		if err := nodeApi.DeleteSectorGroup(ctx, abi.SectorNumber(id).String()); err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
@@ -796,6 +723,29 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+	},
+}
+
+var sectorsUpdateGroupCmd = &cli.Command{
+	Name:  "updatesectorgroup",
+	Usage: "update sector group",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "sector",
+		},
+		&cli.StringFlag{
+			Name: "group",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+		return nodeApi.UpdateSectorGroup(ctx, cctx.String("sector"), cctx.String("group"))
 	},
 }
 

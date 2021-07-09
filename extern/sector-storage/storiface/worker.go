@@ -20,6 +20,8 @@ type WorkerInfo struct {
 	Hostname string
 
 	Resources WorkerResources
+
+	Group    string
 }
 
 type WorkerResources struct {
@@ -71,6 +73,30 @@ type CallID struct {
 
 func (c CallID) String() string {
 	return fmt.Sprintf("%d-%d-%s", c.Sector.Miner, c.Sector.Number, c.ID)
+}
+
+type WorkerParams struct {
+	ApP1Share     bool
+	AddPieceMax   int64
+	AddPieceNow   int64
+	PreCommit1Max int64
+	PreCommit1Now int64
+	PreCommit2Max int64
+	PreCommit2Now int64
+	Commit1Max    int64
+	Commit1Now    int64
+	Commit2Max    int64
+	Commit2Now    int64
+	ApAndP1Max    int64
+	ApAndP1Now    int64
+	Group         string
+	StoreList     map[string]string
+	AcceptTasks   []string
+}
+
+type AutoTaskReturn struct {
+	IsSend bool
+	Group  string
 }
 
 var _ fmt.Stringer = &CallID{}

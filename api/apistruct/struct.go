@@ -8,8 +8,6 @@ import (
 	"io"
 	"time"
 
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -314,8 +312,7 @@ type StorageMinerStruct struct {
 		MarketPendingDeals        func(ctx context.Context) (api.PendingDealInfo, error)                                                                                                                       `perm:"write"`
 		MarketPublishPendingDeals func(ctx context.Context) error                                                                                                                                              `perm:"admin"`
 
-		PledgeSector         func(context.Context) error            `perm:"write"`
-		PledgeSectorToWorker func(context.Context, uuid.UUID) error `perm:"write"`
+		PledgeSector              func(ctx context.Context, group string) error             `perm:"write"`
 
 		SectorsStatus                 func(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) `perm:"read"`
 		SectorsList                   func(context.Context) ([]abi.SectorNumber, error)                                             `perm:"read"`
@@ -365,8 +362,11 @@ type StorageMinerStruct struct {
 		WorkerStats   func(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
 		WorkerJobs    func(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
 
-		GetWorker      func(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error)   `perm:"admin"`
+		GetWorker      func(ctx context.Context) (map[string]storiface.WorkerParams, error)   `perm:"admin"`
 		SetWorkerParam func(ctx context.Context, worker string, key string, value string) error `perm:"admin"`
+		UpdateSectorGroup func(ctx context.Context, SectorNum string, group string) error `perm:"admin"`
+		DeleteSectorGroup func(ctx context.Context, SectorNum string) error `perm:"admin"`
+		TrySched func(ctx context.Context, group, sectorSize string) (bool, error) `perm:"admin"`
 
 		SealingSchedDiag                       func(context.Context, bool) (interface{}, error)                  `perm:"admin"`
 		DealsImportData                        func(ctx context.Context, dealPropCid cid.Cid, file string) error `perm:"write"`
@@ -396,8 +396,6 @@ type StorageMinerStruct struct {
 		CreateBackup func(ctx context.Context, fpath string) error `perm:"admin"`
 
 		CheckProvable func(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
-		AddWorkerTask func(ctx context.Context, ID uuid.UUID) error                                                                                           `perm:"read"`
-		GetWorkerWait func(ctx context.Context, ID uuid.UUID) int                                                                                             `perm:"admin"`
 	}
 }
 
@@ -437,11 +435,13 @@ type WorkerStruct struct {
 		Session        func(context.Context) (uuid.UUID, error) `perm:"admin"`
 
 		AllowableRange  func(ctx context.Context, task sealtasks.TaskType) (bool, error)              `perm:"admin"`
-		GetWorkerInfo   func(ctx context.Context) sectorstorage.WorkerInfo                            `perm:"admin"`
+		GetWorkerInfo   func(ctx context.Context) storiface.WorkerParams                              `perm:"admin"`
 		AddStore        func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
 		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
 		SetWorkerParams func(ctx context.Context, key string, val string) error                       `perm:"admin"`
 		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
+		AddAutoTaskLimit func(ctx context.Context, lim map[string]int64) error 						  `perm:"admin"`
+		AutoTaskLimit func(ctx context.Context) storiface.AutoTaskReturn                              `perm:"admin"`
 
 		WalletSignMessage2 func(context.Context, address.Address, *types.Message, string) (*types.SignedMessage, error) `perm:"admin"`
 		WalletLock         func(context.Context) error                                                                  `perm:"admin"`
@@ -450,11 +450,6 @@ type WorkerStruct struct {
 		WalletChangePasswd func(context.Context, string) (bool, error)                                                  `perm:"admin"`
 		WalletClearPasswd  func(context.Context) (bool, error)                                                          `perm:"admin"`
 		DeleteKey2         func(address.Address)                                                                        `perm:"admin"`
-		GetTaskCount       func(ctx context.Context) int32                                                              `perm:"admin"`
-		SetID              func(ctx context.Context, ID uuid.UUID) error                                                `perm:"admin"`
-		GetID              func(ctx context.Context) uuid.UUID                                                          `perm:"admin"`
-		AddWorkerTask      func(ctx context.Context, ID uuid.UUID) error                                                `perm:"read"`
-		GetWorkerWait      func(ctx context.Context, ID uuid.UUID) int                                                  `perm:"read"`
 	}
 }
 
@@ -1356,12 +1351,8 @@ func (c *StorageMinerStruct) ActorAddressConfig(ctx context.Context) (api.Addres
 	return c.Internal.ActorAddressConfig(ctx)
 }
 
-func (c *StorageMinerStruct) PledgeSector(ctx context.Context) error {
-	return c.Internal.PledgeSector(ctx)
-}
-
-func (c *StorageMinerStruct) PledgeSectorToWorker(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.PledgeSectorToWorker(ctx, ID)
+func (c *StorageMinerStruct) PledgeSector(ctx context.Context, group string) error {
+	return c.Internal.PledgeSector(ctx, group)
 }
 
 // Get the status of a given sector by ID
@@ -1489,12 +1480,24 @@ func (c *StorageMinerStruct) ReturnFetch(ctx context.Context, callID storiface.C
 func (c *StorageMinerStruct) SealingAbort(ctx context.Context, call storiface.CallID) error {
 	return c.Internal.SealingAbort(ctx, call)
 }
-func (c *StorageMinerStruct) GetWorker(ctx context.Context) (map[string]sectorstorage.WorkerInfo, error) {
+func (c *StorageMinerStruct) GetWorker(ctx context.Context) (map[string]storiface.WorkerParams, error) {
 	return c.Internal.GetWorker(ctx)
 }
 
 func (c *StorageMinerStruct) SetWorkerParam(ctx context.Context, worker string, key string, value string) error {
 	return c.Internal.SetWorkerParam(ctx, worker, key, value)
+}
+
+func (c *StorageMinerStruct) UpdateSectorGroup(ctx context.Context, SectorNum string, group string) error {
+	return c.Internal.UpdateSectorGroup(ctx, SectorNum, group)
+}
+
+func (c *StorageMinerStruct) DeleteSectorGroup(ctx context.Context, SectorNum string) error {
+	return c.Internal.DeleteSectorGroup(ctx, SectorNum)
+}
+
+func (c *StorageMinerStruct) TrySched(ctx context.Context, group, sectorSize string) (bool, error) {
+	return c.Internal.TrySched(ctx, group, sectorSize)
 }
 
 func (c *StorageMinerStruct) SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) {
@@ -1699,13 +1702,6 @@ func (c *StorageMinerStruct) CreateBackup(ctx context.Context, fpath string) err
 
 func (c *StorageMinerStruct) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
 	return c.Internal.CheckProvable(ctx, pp, sectors, expensive)
-}
-func (c *StorageMinerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.AddWorkerTask(ctx, ID)
-}
-
-func (c *StorageMinerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return c.Internal.GetWorkerWait(ctx, ID)
 }
 
 // WorkerStruct
@@ -1989,7 +1985,7 @@ func (w *WorkerStruct) AllowableRange(ctx context.Context, task sealtasks.TaskTy
 	return w.Internal.AllowableRange(ctx, task)
 }
 
-func (c *WorkerStruct) GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo {
+func (c *WorkerStruct) GetWorkerInfo(ctx context.Context) storiface.WorkerParams {
 	return c.Internal.GetWorkerInfo(ctx)
 }
 
@@ -2009,24 +2005,12 @@ func (c *WorkerStruct) GetWorkerGroup(ctx context.Context) string {
 	return c.Internal.GetWorkerGroup(ctx)
 }
 
-func (c *WorkerStruct) GetTaskCount(ctx context.Context) int32 {
-	return c.Internal.GetTaskCount(ctx)
+func (c *WorkerStruct) AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error  {
+	return c.Internal.AddAutoTaskLimit(ctx, lim)
 }
 
-func (c *WorkerStruct) SetID(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.SetID(ctx, ID)
-}
-
-func (c *WorkerStruct) GetID(ctx context.Context) uuid.UUID {
-	return c.Internal.GetID(ctx)
-}
-
-func (c *WorkerStruct) AddWorkerTask(ctx context.Context, ID uuid.UUID) error {
-	return c.Internal.AddWorkerTask(ctx, ID)
-}
-
-func (c *WorkerStruct) GetWorkerWait(ctx context.Context, ID uuid.UUID) int {
-	return c.Internal.GetWorkerWait(ctx, ID)
+func (c *WorkerStruct) AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn {
+	return c.Internal.AutoTaskLimit(ctx)
 }
 
 var _ api.Common = &CommonStruct{}

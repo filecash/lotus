@@ -11,8 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"github.com/filecoin-project/lotus/build"
-
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
 
 type WorkerAPI interface {
@@ -51,7 +49,7 @@ type WorkerAPI interface {
 
 	AllowableRange(ctx context.Context, task sealtasks.TaskType) (bool, error)
 
-	GetWorkerInfo(ctx context.Context) sectorstorage.WorkerInfo
+	GetWorkerInfo(ctx context.Context) storiface.WorkerParams
 
 	AddStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error
 
@@ -61,12 +59,7 @@ type WorkerAPI interface {
 
 	GetWorkerGroup(ctx context.Context) string
 
-	GetTaskCount(ctx context.Context) int32
+	AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error
 
-	SetID(ctx context.Context, ID uuid.UUID) error
-
-	GetID(ctx context.Context) uuid.UUID
-
-	AddWorkerTask(ctx context.Context, ID uuid.UUID) error
-	GetWorkerWait(ctx context.Context, ID uuid.UUID) int
+	AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn
 }

@@ -76,6 +76,20 @@ func (evt SectorStartCC) apply(state *SectorInfo) {
 	state.SectorType = evt.SectorType
 }
 
+type SectorStartCustom struct {
+	ID         abi.SectorNumber
+	SectorType abi.RegisteredSealProof
+	Group      string
+	Pieces     []Piece
+}
+
+func (evt SectorStartCustom) apply(state *SectorInfo) {
+	state.SectorNumber = evt.ID
+	state.SectorType = evt.SectorType
+	state.Group = evt.Group
+	state.Pieces = evt.Pieces
+}
+
 type SectorAddPiece struct {
 	NewPiece Piece
 }
