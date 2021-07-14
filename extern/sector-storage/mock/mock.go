@@ -382,7 +382,7 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 		ProofType: spt,
 	}
 
-	pi, err := mgr.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf))
+	pi, err := mgr.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf), "")
 	if err != nil {
 		return storage.SectorRef{}, nil, err
 	}

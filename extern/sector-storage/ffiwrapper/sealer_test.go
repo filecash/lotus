@@ -65,7 +65,7 @@ func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done fu
 
 	var err error
 	r := data(id.ID.Number, dlen)
-	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r)
+	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r, "")
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

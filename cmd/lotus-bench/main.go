@@ -217,7 +217,7 @@ var addPieceCmd = &cli.Command{
 
 		r := rand.New(rand.NewSource(100 + int64(1)))
 
-		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
+		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r, "")
 		if err != nil {
 			return err
 		}
@@ -947,7 +947,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 
 		r := rand.New(rand.NewSource(100 + int64(i)))
 
-		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r)
+		pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(sectorSize).Unpadded(), r, "")
 		if err != nil {
 			return nil, nil, err
 		}
