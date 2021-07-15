@@ -104,6 +104,7 @@ func main() {
 	app.Setup()
 	app.Metadata["repoType"] = repo.StorageMiner
 
+	// https://github.com/moran666666/lotus-1.5.0
 	os.Setenv("LOTUS_WDPOST", "true")
 	os.Setenv("LOTUS_WNPOST", "true")
 

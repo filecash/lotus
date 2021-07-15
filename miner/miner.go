@@ -116,6 +116,8 @@ func (m *Miner) Start(ctx context.Context) error {
 	}
 	m.stop = make(chan struct{})
 
+	// https://github.com/moran666666/lotus-1.5.0
+	//go m.mine(context.TODO())
 	if _, ok := os.LookupEnv("LOTUS_WNPOST"); ok {
 		go m.mine(context.TODO())
 	} else {

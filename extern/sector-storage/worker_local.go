@@ -543,6 +543,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		panic(err)
 	}
 
+	// https://github.com/moran666666/lotus-1.5.0
 	if env, ok := os.LookupEnv("WORKER_NAME"); ok {
 		hostname = hostname + "-" + env
 	}

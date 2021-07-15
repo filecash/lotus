@@ -18,6 +18,7 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
+	// https://github.com/moran666666/lotus-1.5.0
 	scServer "github.com/moran666666/sector-counter/server"
 
 	"github.com/filecoin-project/go-jsonrpc"
@@ -57,6 +58,7 @@ var runCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
+		// https://github.com/moran666666/lotus-1.5.0
 		&cli.BoolFlag{
 			Name:  "wdpost",
 			Usage: "enable windowPoSt",
@@ -96,18 +98,17 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		// https://github.com/moran666666/lotus-1.5.0
 		if cctx.Bool("wdpost") {
 			os.Setenv("LOTUS_WDPOST", "true")
 		} else {
 			os.Unsetenv("LOTUS_WDPOST")
 		}
-
 		if cctx.Bool("wnpost") {
 			os.Setenv("LOTUS_WNPOST", "true")
 		} else {
 			os.Unsetenv("LOTUS_WNPOST")
 		}
-
 		scType := cctx.String("sctype")
 		if scType == "alloce" || scType == "get" {
 			os.Setenv("SC_TYPE", scType)
@@ -126,7 +127,6 @@ var runCmd = &cli.Command{
 		} else {
 			os.Unsetenv("SC_TYPE")
 		}
-
 		if cctx.String("workername") != "" {
 			os.Setenv("WORKER_NAME", cctx.String("workername"))
 		}
@@ -206,6 +206,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("getting API endpoint: %w", err)
 		}
+		
+		// https://github.com/moran666666/lotus-1.5.0
 		if cctx.Bool("p2p") {
 			// Bootstrap with full node
 			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)

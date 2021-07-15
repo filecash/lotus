@@ -3,7 +3,6 @@ package sealing
 import (
 	"context"
 	"errors"
-	scClient "github.com/moran666666/sector-counter/client"
 	"io"
 	"math"
 	"os"
@@ -32,6 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	// https://github.com/moran666666/lotus-1.5.0
+	scClient "github.com/moran666666/sector-counter/client"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -423,6 +424,11 @@ func (m *Sealing) newDealSector(ctx context.Context) (abi.SectorNumber, abi.Sect
 
 	// Now actually create a new sector
 
+	// https://github.com/moran666666/lotus-1.5.0
+	//sid, err := m.sc.Next()
+	//if err != nil {
+	//	return 0, xerrors.Errorf("getting sector number: %w", err)
+	//}
 	var sid abi.SectorNumber
 	if _, ok := os.LookupEnv("SC_TYPE"); ok {
 		sid0, err := scClient.NewClient().GetSectorID(context.Background(), "")

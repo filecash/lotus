@@ -2,13 +2,14 @@ package sealing
 
 import (
 	"context"
-	scClient "github.com/moran666666/sector-counter/client"
 	"os"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
+	// https://github.com/moran666666/lotus-1.5.0
+	scClient "github.com/moran666666/sector-counter/client"
 )
 
 func (m *Sealing) pledgeSector(ctx context.Context, sectorID storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, group string, sizes ...abi.UnpaddedPieceSize) ([]abi.PieceInfo, error) {
@@ -62,6 +63,7 @@ func (m *Sealing) PledgeSector(ctx context.Context, group string) error {
 			return
 		}
 
+		// https://github.com/moran666666/lotus-1.5.0
 		var sid abi.SectorNumber
 		if _, ok := os.LookupEnv("SC_TYPE"); ok {
 			sid0, err := scClient.NewClient().GetSectorID(context.Background(), "")

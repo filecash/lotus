@@ -414,7 +414,10 @@ func (st *Local) AcquireSector(ctx context.Context, sid storage.SectorRef, exist
 			continue
 		}
 
+		// https://github.com/moran666666/lotus-1.5.0
+		//si, err := st.index.StorageFindSector(ctx, sid.ID, fileType, ssize, false)
 		si, err := st.CheckDeclareSector(ctx, sid.ID, fileType, ssize, pathType)
+
 		if err != nil {
 			log.Warnf("finding existing sector %d(t:%d) failed: %+v", sid, fileType, err)
 			continue
@@ -672,6 +675,7 @@ func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 
 var _ Store = &Local{}
 
+// https://github.com/moran666666/lotus-1.5.0
 func (st *Local) CheckDeclareSector(ctx context.Context, sid abi.SectorID, fileType storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]SectorStorageInfo, error) {
 	si0, err := st.index.StorageFindSector(ctx, sid, fileType, ssize, false)
 	if len(si0) > 0 || err != nil {
