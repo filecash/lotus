@@ -59,7 +59,7 @@ func (s *schedTestWorker) SealCommit1(ctx context.Context, sector storage.Sector
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (storiface.CallID, error) {
+func (s *schedTestWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out, remoteC2 bool) (storiface.CallID, error) {
 	panic("implement me")
 }
 

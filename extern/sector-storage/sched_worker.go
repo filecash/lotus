@@ -311,14 +311,22 @@ func (sw *schedWorker) workerCompactWindows() {
 
 			for ti, todo := range window.todo {
 				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
-				if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info.Resources) {
-					continue
+				
+				// fic remotec2
+				if !todo.isRemoteC2 {
+					if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info.Resources) {
+						continue
+					}
 				}
 
 				moved = append(moved, ti)
 				lower.todo = append(lower.todo, todo)
-				lower.allocated.add(worker.info.Resources, needRes)
-				window.allocated.free(worker.info.Resources, needRes)
+
+				// fic remotec2
+				if !todo.isRemoteC2 {
+					lower.allocated.add(worker.info.Resources, needRes)
+					window.allocated.free(worker.info.Resources, needRes)
+				}
 			}
 
 			if len(moved) > 0 {
@@ -421,7 +429,10 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 	sh.execSectorWorker.lk.Unlock()
 
 	w.lk.Lock()
-	w.preparing.add(w.info.Resources, needRes)
+	// fic remotec2
+	if !req.isRemoteC2 {
+		w.preparing.add(w.info.Resources, needRes)
+	}
 	w.lk.Unlock()
 
 	go func() {
@@ -454,9 +465,13 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 		}
 
 		// wait (if needed) for resources in the 'active' window
-		err = w.active.withResources(sw.wid, w.info.Resources, needRes, &sh.workersLk, func() error {
+		// fic remotec2
+		cb := func() error {
 			w.lk.Lock()
-			w.preparing.free(w.info.Resources, needRes)
+			// fic remotec2
+			if !req.isRemoteC2 {
+				w.preparing.free(w.info.Resources, needRes)
+			}
 			w.lk.Unlock()
 			sh.workersLk.Unlock()
 			defer sh.workersLk.Lock() // we MUST return locked from this function
@@ -480,7 +495,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			}
 
 			return nil
-		})
+		}
 
 		if req.taskType == sealtasks.TTFetch {
 			log.Warnf("delete taskgroup map, sectorID: %v, taskType: %s\n", req.sector, req.taskType)
@@ -488,6 +503,13 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			delete(sh.execSectorWorker.group, req.sector.ID.Number.String())
 			_ = sh.updateSectorGroupFile()
 			sh.execSectorWorker.lk.Unlock()
+		}
+
+		// fic remoteC2
+		if req.isRemoteC2 {
+			err = cb()
+		} else {
+			err = w.active.withResources(sw.wid, w.info.Resources, needRes, &sh.workersLk, cb)
 		}
 
 		sh.workersLk.Unlock()

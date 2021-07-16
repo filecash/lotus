@@ -19,7 +19,18 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 
 	out := map[uuid.UUID]storiface.WorkerStats{}
 
+	// fic remoteC2
+	rpcCtx, cancel := context.WithTimeout(context.TODO(), SelectorTimeout*2)
+	defer cancel()
 	for id, handle := range m.sched.workers {
+		// fic remoteC2
+		hasRemoteC2 := false
+		if ok, err := handle.workerRpc.HasRemoteC2(rpcCtx); ok {
+			hasRemoteC2 = true
+		} else if err != nil {
+			log.Errorf("get remoteC2 work info err %v:", err)
+		}
+
 		out[uuid.UUID(id)] = storiface.WorkerStats{
 			Info:    handle.info,
 			Enabled: handle.enabled,
@@ -28,6 +39,8 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 			MemUsedMax: handle.active.memUsedMax,
 			GpuUsed:    handle.active.gpuUsed,
 			CpuUse:     handle.active.cpuUse,
+			// fic remoteC2
+			RemoteC2: hasRemoteC2,
 		}
 	}
 

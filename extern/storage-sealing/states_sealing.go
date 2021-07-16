@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"os"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -402,7 +403,18 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(1): %w", err)})
 	}
 
-	proof, err := m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
+	// fic remoteC2
+	//proof, err := m.sealer.SealCommit2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
+	remoteCtx := ctx.Context()
+	remoteC2Url, isRemote := os.LookupEnv("FFI_REMOTE_COMMIT2_BASE_URL")
+	if sector.InvalidProofs < 1 && isRemote && remoteC2Url != "" {
+		remoteCtx = context.WithValue(ctx.Context(), "remoteC2", true)
+	} else {
+		remoteCtx = context.WithValue(ctx.Context(), "remoteC2", false)
+	}
+	log.Debugf("sealer SealCommit2 InvalidProofs is %v,  remoteC2 is %v", sector.InvalidProofs, remoteCtx.Value("remoteC2"))
+	proof, err := m.sealer.SealCommit2(sector.sealingCtx(remoteCtx), m.minerSector(sector.SectorType, sector.SectorNumber), c2in)
+
 	if err != nil {
 		return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("computing seal proof failed(2): %w", err)})
 	}

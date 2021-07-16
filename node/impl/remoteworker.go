@@ -75,6 +75,10 @@ func (r *remoteWorker) GetWorkerGroup(ctx context.Context) string {
 	return r.WorkerAPI.GetWorkerGroup(ctx)
 }
 
+func (r *remoteWorker) HasRemoteC2(ctx context.Context) (bool, error) {
+	return r.WorkerAPI.HasRemoteC2(ctx)
+}
+
 func (r *remoteWorker) AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error {
 	return r.WorkerAPI.AddAutoTaskLimit(ctx, lim)
 }

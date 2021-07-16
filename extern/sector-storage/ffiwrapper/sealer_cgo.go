@@ -695,6 +695,14 @@ func (sb *Sealer) SealCommit2(ctx context.Context, sector storage.SectorRef, pha
 	return ffi.SealCommitPhase2(phase1Out, sector.ID.Number, sector.ID.Miner)
 }
 
+// fic remotec2
+func (sb *Sealer) SealCommit2Local(ctx context.Context, sector storage.SectorRef, phase1Out storage.Commit1Out) (storage.Proof, error) {
+	return ffi.SealCommitPhase2Local(phase1Out, sector.ID.Number, sector.ID.Miner)
+}
+func (sb *Sealer) SealCommit2Remote(ctx context.Context, sector storage.SectorRef, phase1Out storage.Commit1Out) (storage.Proof, error) {
+	return ffi.SealCommitPhase2Remote(phase1Out, sector.ID.Number, sector.ID.Miner)
+}
+
 func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {

@@ -60,7 +60,7 @@ type LocalWorker struct {
 	ret        storiface.WorkerReturn
 	executor   ExecutorFunc
 	noSwap     bool
-	apP1Share  bool
+	APP1Share  bool
 
 	ct          *workerCallTracker
 	acceptTasks map[sealtasks.TaskType]struct{}
@@ -72,6 +72,8 @@ type LocalWorker struct {
 	testDisable int64
 	closing     chan struct{}
 
+	apAndP1Max    int64
+	apAndP1Now    int64
 	addPieceMax   int64
 	addPieceNow   int64
 	preCommit1Max int64
@@ -82,8 +84,6 @@ type LocalWorker struct {
 	commit1Now    int64
 	commit2Max    int64
 	commit2Now    int64
-	apAndP1Max    int64
-	apAndP1Now    int64
 	storeList     taskList
 
 	group string
@@ -419,14 +419,20 @@ func (l *LocalWorker) SealCommit1(ctx context.Context, sector storage.SectorRef,
 	})
 }
 
-func (l *LocalWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.Commit1Out) (storiface.CallID, error) {
+func (l *LocalWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.Commit1Out, remoteC2 bool) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
 	}
 
 	return l.asyncCall(ctx, sector, SealCommit2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		return sb.SealCommit2(ctx, sector, phase1Out)
+		//return sb.SealCommit2(ctx, sector, phase1Out)
+		if remoteC2 {
+			log.Debugf("SCHED LocalWorker sectorID:[%v] is remoteC2 ...", sector.ID.Number)
+			return sb.SealCommit2Remote(ctx, sector, phase1Out)
+		}
+		log.Debugf("SCHED LocalWorker sectorID:[%v] is localC2 ...", sector.ID.Number)
+		return sb.SealCommit2Local(ctx, sector, phase1Out)
 	})
 }
 
@@ -638,24 +644,24 @@ func (l *LocalWorker) addRange(ctx context.Context, task sealtasks.TaskType, act
 	switch task {
 	case sealtasks.TTAddPiece:
 		if act == StartTask {
-			if l.apP1Share {
+			if l.APP1Share {
 				l.apAndP1Now++
 			}
 			l.addPieceNow++
 		} else {
-			if l.apP1Share {
+			if l.APP1Share {
 				l.apAndP1Now--
 			}
 			l.addPieceNow--
 		}
 	case sealtasks.TTPreCommit1:
 		if act == StartTask {
-			if l.apP1Share {
+			if l.APP1Share {
 				l.apAndP1Now++
 			}
 			l.preCommit1Now++
 		} else {
-			if l.apP1Share {
+			if l.APP1Share {
 				l.apAndP1Now--
 			}
 			l.preCommit1Now--
@@ -745,8 +751,11 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) storiface.WorkerParams 
 
 	sort.Strings(task)
 
+	// fic remotec2
+	C2RemoteHostName := os.Getenv("FFI_REMOTE_COMMIT2_BASE_URL")
+
 	workerInfo := storiface.WorkerParams{
-		ApP1Share:     l.apP1Share,
+		APP1Share:     l.APP1Share,
 		AddPieceMax:   l.addPieceMax,
 		AddPieceNow:   l.addPieceNow,
 		PreCommit1Max: l.preCommit1Max,
@@ -760,6 +769,7 @@ func (l *LocalWorker) GetWorkerInfo(ctx context.Context) storiface.WorkerParams 
 		ApAndP1Max:    l.apAndP1Max,
 		ApAndP1Now:    l.apAndP1Now,
 		AcceptTasks:   task,
+		C2HostName:    C2RemoteHostName,
 		Group:         l.group,
 	}
 
@@ -796,6 +806,21 @@ func (l *LocalWorker) SetWorkerParams(ctx context.Context, key string, val strin
 	l.lk.Lock()
 	defer l.lk.Unlock()
 	switch key {
+	case "app1max":
+		l.lk.Lock()
+		defer l.lk.Unlock()
+		param, err := strconv.ParseInt(val, 10, 64)
+		if err != nil {
+			return xerrors.Errorf("key is error, string to int failed: %w", err)
+		}
+		if param > 0 {
+			l.apAndP1Max = param
+			l.apAndP1Now = l.addPieceNow + l.preCommit1Now
+		} else {
+			l.apAndP1Max = 0
+			l.apAndP1Now = 0
+			l.APP1Share = false
+		}
 	case "precommit1max":
 		param, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
@@ -817,20 +842,9 @@ func (l *LocalWorker) SetWorkerParams(ctx context.Context, key string, val strin
 		l.commit2Max = param
 	case "group":
 		l.group = val
-	case "app1max":
-		l.lk.Lock()
-		defer l.lk.Unlock()
-		param, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return xerrors.Errorf("key is error, string to int failed: %w", err)
-		}
-		if param > 0 {
-			l.apAndP1Max = param
-			l.apAndP1Now = l.addPieceNow + l.preCommit1Now
-		} else {
-			l.apAndP1Max = 0
-			l.apAndP1Now = 0
-			l.apP1Share = false
+	case "remotec2url":
+		if err := os.Setenv("FFI_REMOTE_COMMIT2_BASE_URL", val); err != nil {
+			return xerrors.Errorf("set FFI_REMOTE_COMMIT2_BASE_URL err: %s", key)
 		}
 	case "autotaskapp1":
 		l.lk.Lock()
@@ -882,6 +896,15 @@ func (l *LocalWorker) GetWorkerGroup(ctx context.Context) string {
 	return l.group
 }
 
+func (l *LocalWorker) HasRemoteC2(ctx context.Context) (bool, error) {
+	remoteC2Url, isRemoteC2 := os.LookupEnv("FFI_REMOTE_COMMIT2_BASE_URL")
+	log.Debugf("HasRemoteC2 isRemoteC2 is:%v, remoteC2Url :%v ", isRemoteC2, remoteC2Url)
+	if isRemoteC2 && remoteC2Url != "" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (l *LocalWorker) AddAutoTaskLimit(ctx context.Context, limit map[string]int64) error {
 	for k, v := range limit {
 		if err := l.setAutoTaskParam(k, v); err != nil{
@@ -897,7 +920,7 @@ func (l *LocalWorker) AutoTaskLimit(ctx context.Context) storiface.AutoTaskRetur
 	for t, c := range l.autoTaskLimit {
 		switch t {
 		case "app1":
-			if l.apP1Share {
+			if l.APP1Share {
 				if l.addPieceNow + l.preCommit1Now >= c {
 					log.Debugf("addPieceNow: %d, preCommit1Now: %d, autoTaskLimit: %d, return: false",l.addPieceNow, l.preCommit1Now, l.autoTaskLimit["app1"])
 					isSend = false
@@ -937,7 +960,7 @@ func (l *LocalWorker) AutoTaskLimit(ctx context.Context) storiface.AutoTaskRetur
 func (l *LocalWorker) setAutoTaskParam (taskType string, value int64) error {
 	switch taskType {
 	case "app1":
-		if l.apP1Share {
+		if l.APP1Share {
 			if l.apAndP1Max != 0 && l.apAndP1Max < value {
 				return xerrors.New("ap AND p1 max share, apAndP1Max can not less than app1")
 			}

@@ -51,6 +51,7 @@ type Worker interface {
 	DeleteStore(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error
 	SetWorkerParams(ctx context.Context, key string, val string) error
 	GetWorkerGroup(ctx context.Context) string
+	HasRemoteC2(ctx context.Context) (bool, error)
 }
 
 type SectorManager interface {
@@ -550,7 +551,12 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storage.SectorRef, pha
 	selector := newTaskSelector(sealtasks.TTCommit2)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTCommit2, selector, schedNop, func(ctx context.Context, w Worker) error {
-		err := m.startWork(ctx, w, wk)(w.SealCommit2(ctx, sector, phase1Out))
+		// fic remotec2
+		remoteC2 := false
+		if ok := ctx.Value("remoteC2"); ok != nil {
+			remoteC2 = ok.(bool)
+		}
+		err := m.startWork(ctx, w, wk)(w.SealCommit2(ctx, sector, phase1Out, remoteC2))
 		if err != nil {
 			return err
 		}

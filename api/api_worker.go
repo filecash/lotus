@@ -59,6 +59,8 @@ type WorkerAPI interface {
 
 	GetWorkerGroup(ctx context.Context) string
 
+	HasRemoteC2(ctx context.Context) (bool, error)
+
 	AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error
 
 	AutoTaskLimit(ctx context.Context) storiface.AutoTaskReturn

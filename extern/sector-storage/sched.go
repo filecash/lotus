@@ -150,8 +150,6 @@ type workerRequest struct {
 	priority int // larger values more important
 	sel      WorkerSelector
 
-	group  string
-
 	prepare WorkerAction
 	work    WorkerAction
 
@@ -162,10 +160,20 @@ type workerRequest struct {
 	indexHeap int
 	ret       chan<- workerResponse
 	ctx       context.Context
+	
+	// fic remotec2
+	isRemoteC2 bool
+	group string
 }
 
 type workerResponse struct {
 	err error
+}
+
+// fic remotec2
+type remoteC2Workers struct {
+	list map[*workerHandle]bool
+	lk   sync.RWMutex
 }
 
 func newScheduler() *scheduler {
@@ -222,6 +230,12 @@ func newScheduler() *scheduler {
 func (sh *scheduler) Schedule(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
 	ret := make(chan workerResponse)
 
+	// fic remotec2
+	isRemoteC2 := false
+	if ok := ctx.Value("remoteC2"); ok != nil {
+		isRemoteC2 = ok.(bool)
+	}
+
 	select {
 	case sh.schedule <- &workerRequest{
 		sector:   sector,
@@ -236,6 +250,8 @@ func (sh *scheduler) Schedule(ctx context.Context, sector storage.SectorRef, tas
 
 		ret: ret,
 		ctx: ctx,
+
+		isRemoteC2: isRemoteC2,
 	}:
 	case <-sh.closing:
 		return xerrors.New("closing")
@@ -256,6 +272,12 @@ func (sh *scheduler) Schedule(ctx context.Context, sector storage.SectorRef, tas
 func (sh *scheduler) ScheduleExt(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction, group string) error {
 	ret := make(chan workerResponse)
 
+	// fic remotec2
+	isRemoteC2 := false
+	if ok := ctx.Value("remoteC2"); ok != nil {
+		isRemoteC2 = ok.(bool)
+	}
+
 	select {
 	case sh.schedule <- &workerRequest{
 		sector:   sector,
@@ -268,10 +290,11 @@ func (sh *scheduler) ScheduleExt(ctx context.Context, sector storage.SectorRef, 
 
 		start: time.Now(),
 
-		group:   group,
-
 		ret: ret,
 		ctx: ctx,
+
+		isRemoteC2: isRemoteC2,
+		group:      group,
 	}:
 	case <-sh.closing:
 		return xerrors.New("closing")
@@ -489,6 +512,28 @@ func (sh *scheduler) trySched() {
 					log.Debugw("skipping disabled worker", "worker", windowRequest.worker)
 					continue
 				}
+
+				// fic remotec2
+				if task.isRemoteC2 {
+					log.Debugf("Step 1 this task is remoteC2, sectorId: %v", task.sector.ID.Number)
+					rpcCtx, cancel := context.WithTimeout(task.ctx, SelectorTimeout)
+					ok, err := worker.workerRpc.HasRemoteC2(rpcCtx)
+					cancel()
+					if err != nil {
+						log.Errorf("trySched(1) req.HasRemoteC2 error: %+v", err)
+						continue
+					}
+					if !ok {
+						log.Warnf("trySched(1) req.HasRemoteC2 dont exist %+v", worker.info.Hostname)
+						continue
+					}
+				} else {
+					// TODO: allow bigger windows
+					if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info.Resources) {
+						continue
+					}
+				}
+
 				if task.taskType != sealtasks.TTFetch {
 					workerGroup := worker.workerRpc.GetWorkerGroup(task.ctx)
 					if exist && sectorGroup != "all" && workerGroup != "all" {
@@ -497,11 +542,6 @@ func (sh *scheduler) trySched() {
 							continue
 						}
 					}
-				}
-
-				// TODO: allow bigger windows
-				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info.Resources) {
-					continue
 				}
 
 				rpcCtx, cancel := context.WithTimeout(task.ctx, SelectorTimeout)
@@ -585,9 +625,12 @@ func (sh *scheduler) trySched() {
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.ID.Number, wnd)
 
-			// TODO: allow bigger windows
-			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", wr) {
-				continue
+			// fic remotec2
+			if !task.isRemoteC2 {
+				// TODO: allow bigger windows
+				if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", wr) {
+					continue
+				}
 			}
 
 			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
@@ -599,7 +642,11 @@ func (sh *scheduler) trySched() {
 
 			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
 
-			windows[wnd].allocated.add(wr, needRes)
+			// fic remotec2
+			if !task.isRemoteC2 {
+				windows[wnd].allocated.add(wr, needRes)
+			}
+			//windows[wnd].allocated.add(wr, needRes)
 			// TODO: We probably want to re-sort acceptableWindows here based on new
 			//  workerHandle.utilization + windows[wnd].allocated.utilization (workerHandle.utilization is used in all
 			//  task selectors, but not in the same way, so need to figure out how to do that in a non-O(n^2 way), and
@@ -610,6 +657,13 @@ func (sh *scheduler) trySched() {
 		}
 
 		if selectedWindow < 0 {
+			// fic remotec2
+			if task.isRemoteC2 {
+				rmQueue = append(rmQueue, sqi)
+				log.Errorf("error: sectorID:[%+v] allocate remote c2 failed,because there`s none remoteC2", task.sector.ID)
+				go task.respond(xerrors.Errorf("error: sectorID:[%+v] allocate remote c2 failed,because there`s none remoteC2", task.sector.ID))
+			}
+
 			// all windows full
 			continue
 		}
@@ -697,6 +751,12 @@ func (sh *scheduler) Close(ctx context.Context) error {
 		return ctx.Err()
 	}
 	return nil
+}
+
+func newRemoteC2Workers() remoteC2Workers {
+	return remoteC2Workers{
+		list: make(map[*workerHandle]bool),
+	}
 }
 
 func (sh *scheduler) updateSectorGroupFile() error {

@@ -412,7 +412,7 @@ type WorkerStruct struct {
 		SealPreCommit1  func(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error)                                                              `perm:"admin"`
 		SealPreCommit2  func(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (storiface.CallID, error)                                                                                     `perm:"admin"`
 		SealCommit1     func(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) `perm:"admin"`
-		SealCommit2     func(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (storiface.CallID, error)                                                                                         `perm:"admin"`
+		SealCommit2     func(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out, remoteC2 bool) (storiface.CallID, error)                                                                                         `perm:"admin"`
 		FinalizeSector  func(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error)                                                                                   `perm:"admin"`
 		ReleaseUnsealed func(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (storiface.CallID, error)                                                                                     `perm:"admin"`
 		MoveStorage     func(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error)                                                                                 `perm:"admin"`
@@ -440,6 +440,7 @@ type WorkerStruct struct {
 		DeleteStore     func(ctx context.Context, ID abi.SectorID, taskType sealtasks.TaskType) error `perm:"admin"`
 		SetWorkerParams func(ctx context.Context, key string, val string) error                       `perm:"admin"`
 		GetWorkerGroup  func(ctx context.Context) string                                              `perm:"admin"`
+		HasRemoteC2     func(context.Context) (bool, error)                                           `perm:"admin"`
 		AddAutoTaskLimit func(ctx context.Context, lim map[string]int64) error 						  `perm:"admin"`
 		AutoTaskLimit func(ctx context.Context) storiface.AutoTaskReturn                              `perm:"admin"`
 
@@ -1738,8 +1739,8 @@ func (w *WorkerStruct) SealCommit1(ctx context.Context, sector storage.SectorRef
 	return w.Internal.SealCommit1(ctx, sector, ticket, seed, pieces, cids)
 }
 
-func (w *WorkerStruct) SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (storiface.CallID, error) {
-	return w.Internal.SealCommit2(ctx, sector, c1o)
+func (w *WorkerStruct) SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out, remoteC2 bool) (storiface.CallID, error) {
+	return w.Internal.SealCommit2(ctx, sector, c1o, remoteC2)
 }
 
 func (w *WorkerStruct) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
@@ -2003,6 +2004,10 @@ func (c *WorkerStruct) SetWorkerParams(ctx context.Context, key string, val stri
 
 func (c *WorkerStruct) GetWorkerGroup(ctx context.Context) string {
 	return c.Internal.GetWorkerGroup(ctx)
+}
+
+func (w *WorkerStruct) HasRemoteC2(ctx context.Context) (bool, error) {
+	return w.Internal.HasRemoteC2(ctx)
 }
 
 func (c *WorkerStruct) AddAutoTaskLimit(ctx context.Context, lim map[string]int64) error  {

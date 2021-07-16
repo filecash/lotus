@@ -42,6 +42,8 @@ type WorkerStats struct {
 	MemUsedMax uint64
 	GpuUsed    bool   // nolint
 	CpuUse     uint64 // nolint
+	// fic remoteC2
+	RemoteC2 bool
 }
 
 const (
@@ -76,7 +78,9 @@ func (c CallID) String() string {
 }
 
 type WorkerParams struct {
-	ApP1Share     bool
+	APP1Share     bool
+	ApAndP1Max    int64
+	ApAndP1Now    int64
 	AddPieceMax   int64
 	AddPieceNow   int64
 	PreCommit1Max int64
@@ -87,9 +91,8 @@ type WorkerParams struct {
 	Commit1Now    int64
 	Commit2Max    int64
 	Commit2Now    int64
-	ApAndP1Max    int64
-	ApAndP1Now    int64
 	Group         string
+	C2HostName    string
 	StoreList     map[string]string
 	AcceptTasks   []string
 }
@@ -108,7 +111,7 @@ type WorkerCalls interface {
 	SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
 	SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (CallID, error)
 	SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
-	SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (CallID, error)
+	SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out, remoteC2 bool) (CallID, error)
 	FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
 	ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (CallID, error)
 	MoveStorage(ctx context.Context, sector storage.SectorRef, types SectorFileType) (CallID, error)
